@@ -90,3 +90,20 @@ Use **Postman** or browser to hit:
 - Backend is working, no frontend yet.
 - I’ll help you with testing in Postman if needed.
 - We’ll add frontend + more features step by step.
+
+
+
+database
+xampp -- 
+MariaDB [campus_hub]> CREATE TABLE users (
+    ->   id INT AUTO_INCREMENT PRIMARY KEY,
+    ->   name VARCHAR(100) NOT NULL,
+    ->   email VARCHAR(150) NOT NULL UNIQUE,
+    ->   password_hash VARCHAR(255) NOT NULL,
+    ->   department VARCHAR(100),
+    ->   year INT,
+    ->   routine JSON DEFAULT NULL,        -- store schedule as JSON { "mon": [{"from":"10:00","to":"11:00","class":"CSE"}], ... }
+    ->   free_times JSON DEFAULT NULL,     -- store free time blocks as JSON
+    ->   is_admin BOOLEAN DEFAULT FALSE,
+    ->   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    -> );
