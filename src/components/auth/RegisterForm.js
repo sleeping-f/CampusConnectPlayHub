@@ -287,6 +287,7 @@ const RegisterForm = () => {
       <div className="divider">
         <span>or</span>
       </div>
+      <div className="divider2" />
 
       {/* Google Sign-In */}
       <div className="google-btn-container">
