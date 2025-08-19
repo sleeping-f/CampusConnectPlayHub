@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { FiUser, FiMail, FiHash, FiBookOpen, FiEdit3, FiSave, FiX } from 'react-icons/fi';
 import './StudentInfo.css';
+import GradientText from '../extra_designings/GradientText';
 
 const StudentInfo = ({ user }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -58,7 +59,14 @@ const StudentInfo = ({ user }) => {
   return (
     <div className="student-info">
       <div className="info-header">
-        <h2>Profile Information</h2>
+        <h2><GradientText
+          colors={["#8352fdff", "#5487ffff", "#7852ffff", "#4d83ffff", "#7b50feff"]}
+          animationSpeed={3}
+          showBorder={false}
+          className="custom-class"
+        >
+          Student Profile
+        </GradientText></h2>
         {!isEditing ? (
           <motion.button
             className="btn btn-outline"
@@ -248,7 +256,14 @@ const StudentInfo = ({ user }) => {
 
         {/* Stats Section */}
         <div className="stats-section">
-          <h3>Your Activity</h3>
+          <h3><GradientText
+            colors={["#8352fdff", "#5487ffff", "#7852ffff", "#4d83ffff", "#7b50feff"]}
+            animationSpeed={3}
+            showBorder={false}
+            className="custom-class"
+          >
+            Your Activity
+          </GradientText></h3>
           <div className="stats-grid">
             <div className="stat-card">
               <div className="stat-number">0</div>

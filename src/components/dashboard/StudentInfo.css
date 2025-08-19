@@ -176,17 +176,24 @@
 
 /* Stats Section */
 .stats-section {
-  background: rgba(255, 255, 255, 0.75);
-  border-radius: 16px;
+  background: rgba(26, 26, 46, 0.8);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
   padding: 32px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(120, 119, 198, 0.2);
+  gap: 32px;
+  align-items: flex-start;
+  transition: all 0.3s ease;
 }
+
 
 .stats-section h3 {
   font-size: 1.4rem;
   font-weight: 600;
-  color: #1a1a1a;
+  color: #845add;
   margin: 0 0 24px 0;
 }
 
@@ -197,17 +204,18 @@
 }
 
 .stat-card {
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #533483 100%);
+  opacity: .1;
   border-radius: 12px;
+  border: 1px solid #5c626e;
   padding: 24px;
   text-align: center;
-  border: 1px solid #e5e7eb;
   transition: all 0.3s ease;
 }
 
 .stat-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
 }
 
 .stat-number {
