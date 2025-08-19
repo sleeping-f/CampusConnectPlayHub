@@ -79,6 +79,7 @@
 .info-fields {
   display: grid;
   gap: 24px;
+  opacity: .9;
 }
 
 .info-field {
@@ -86,9 +87,9 @@
   align-items: flex-start;
   gap: 16px;
   padding: 16px;
-  background: rgba(255, 255, 255, 0.75);
+  background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #533483 100%);
   border-radius: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #5c626e;
 }
 
 .field-icon {
@@ -96,7 +97,7 @@
   width: 40px;
   height: 40px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374582 0%, #573778 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -112,7 +113,7 @@
   display: block;
   font-size: 0.8rem;
   font-weight: 500;
-  color: #6b7280;
+  color: #b8c4db;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 4px;
@@ -121,7 +122,7 @@
 .field-content p {
   font-size: 1rem;
   font-weight: 500;
-  color: #1a1a1a;
+  color: #c6c6c6;
   margin: 0;
 }
 
@@ -335,7 +336,7 @@
 
 /* Hover effects */
 .info-field:hover {
-  background: #f3f4f6;
+  background: linear-gradient(135deg, #1f1f47 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #533483 100%);
   border-color: #d1d5db;
 }
 
