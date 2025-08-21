@@ -120,7 +120,7 @@ const RegisterForm = () => {
     >
       {/* Name Fields */}
       <div className="form-row">
-        <div className="form-group">
+        <div className="form-group-signup">
           <div className="input-wrapper">
             <FiUser className="input-icon" />
             <input
@@ -134,7 +134,7 @@ const RegisterForm = () => {
             />
           </div>
         </div>
-        <div className="form-group">
+        <div className="form-group-signup">
           <div className="input-wrapper">
             <FiUser className="input-icon" />
             <input
@@ -151,7 +151,7 @@ const RegisterForm = () => {
       </div>
 
       {/* Email Field */}
-      <div className="form-group">
+      <div className="form-group-signup">
         <div className="input-wrapper">
           <FiMail className="input-icon" />
           <input
@@ -167,7 +167,7 @@ const RegisterForm = () => {
       </div>
 
       {/* Role Selection */}
-      <div className="form-group">
+      <div className="form-group-signup">
         <div className="input-wrapper">
           <FiUser className="input-icon" />
           <select
@@ -188,7 +188,7 @@ const RegisterForm = () => {
 
       {/* Student ID (if student) */}
       {formData.role === 'student' && (
-        <div className="form-group">
+        <div className="form-group-signup">
           <div className="input-wrapper">
             <FiHash className="input-icon" />
             <input
@@ -206,7 +206,7 @@ const RegisterForm = () => {
 
       {/* Department (if student) */}
       {formData.role === 'student' && (
-        <div className="form-group">
+        <div className="form-group-signup">
           <div className="input-wrapper">
             <FiBookOpen className="input-icon" />
             <select
@@ -228,7 +228,7 @@ const RegisterForm = () => {
       )}
 
       {/* Password Fields */}
-      <div className="form-group">
+      <div className="form-group-signup">
         <div className="input-wrapper">
           <FiLock className="input-icon" />
           <input
@@ -250,7 +250,7 @@ const RegisterForm = () => {
         </div>
       </div>
 
-      <div className="form-group">
+      <div className="form-group-signup">
         <div className="input-wrapper">
           <FiLock className="input-icon" />
           <input

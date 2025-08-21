@@ -5,6 +5,7 @@ import './StudentInfo.css';
 import GradientText from '../extra_designings/GradientText';
 
 const StudentInfo = ({ user }) => {
+  console.log('User data:', user);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
     firstName: user?.firstName || '',

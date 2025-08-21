@@ -1,12 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiPlus, FiEdit3, FiTrash2, FiClock, FiMapPin } from 'react-icons/fi';
+import { FiPlus, FiEdit3, FiTrash2, FiClock, FiMapPin, FiX } from 'react-icons/fi';
+import axios from 'axios';
+import toast from 'react-hot-toast';
 import './RoutineManager.css';
 
 const RoutineManager = ({ user }) => {
   const [routines, setRoutines] = useState([]);
   const [selectedDay, setSelectedDay] = useState('monday');
   const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({
+    day: 'monday',
+    startTime: '09:00',
+    endTime: '10:00',
+    activity: '',
+    location: '',
+    type: 'class'
+  });
+  const [submitting, setSubmitting] = useState(false);
 
   const days = [
     { id: 'monday', label: 'Monday' },
@@ -18,50 +30,25 @@ const RoutineManager = ({ user }) => {
     { id: 'sunday', label: 'Sunday' },
   ];
 
-  // Mock data for demonstration
+  // Fetch routines from backend
   useEffect(() => {
-    const mockRoutines = [
-      {
-        id: 1,
-        day: 'monday',
-        startTime: '09:00',
-        endTime: '10:30',
-        activity: 'Computer Science 101',
-        location: 'Room 301',
-        type: 'class'
-      },
-      {
-        id: 2,
-        day: 'monday',
-        startTime: '11:00',
-        endTime: '12:30',
-        activity: 'Mathematics',
-        location: 'Room 205',
-        type: 'class'
-      },
-      {
-        id: 3,
-        day: 'tuesday',
-        startTime: '14:00',
-        endTime: '15:30',
-        activity: 'Study Session',
-        location: 'Library',
-        type: 'study'
-      },
-      {
-        id: 4,
-        day: 'wednesday',
-        startTime: '10:00',
-        endTime: '11:30',
-        activity: 'Physics Lab',
-        location: 'Lab 102',
-        type: 'class'
-      }
-    ];
-    
-    setRoutines(mockRoutines);
-    setLoading(false);
-  }, []);
+    if (user) {
+      fetchRoutines();
+    }
+  }, [user]);
+
+  const fetchRoutines = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('/api/routines');
+      setRoutines(response.data.routines || []);
+    } catch (error) {
+      console.error('Error fetching routines:', error);
+      toast.error('Failed to load routines');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getRoutinesForDay = (day) => {
     return routines.filter(routine => routine.day === day);
@@ -87,12 +74,89 @@ const RoutineManager = ({ user }) => {
     return labels[type] || type;
   };
 
-  const formatTime = (time) => {
-    return time.replace(':', '');
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
-  const handleDeleteRoutine = (routineId) => {
-    setRoutines(routines.filter(routine => routine.id !== routineId));
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!formData.activity.trim() || !formData.location.trim()) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    if (formData.startTime >= formData.endTime) {
+      toast.error('End time must be after start time');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const response = await axios.post('/api/routines', formData);
+
+      // Add new routine to state
+      setRoutines(prev => [...prev, response.data.routine]);
+
+      // Switch to the day where the routine was added
+      setSelectedDay(formData.day);
+
+      // Reset form and close
+      setFormData({
+        day: 'monday',
+        startTime: '09:00',
+        endTime: '10:00',
+        activity: '',
+        location: '',
+        type: 'class'
+      });
+      setShowForm(false);
+
+      toast.success('Routine added successfully!');
+    } catch (error) {
+      const message = error.response?.data?.message || 'Failed to add routine';
+      toast.error(message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteRoutine = async (routineId) => {
+    try {
+      await axios.delete(`/api/routines/${routineId}`);
+      setRoutines(prev => prev.filter(routine => routine.id !== routineId));
+      toast.success('Routine deleted successfully!');
+    } catch (error) {
+      toast.error('Failed to delete routine');
+    }
+  };
+
+  const openForm = () => {
+    setFormData({
+      day: selectedDay,
+      startTime: '09:00',
+      endTime: '10:00',
+      activity: '',
+      location: '',
+      type: 'class'
+    });
+    setShowForm(true);
+  };
+
+  const closeForm = () => {
+    setShowForm(false);
+    setFormData({
+      day: 'monday',
+      startTime: '09:00',
+      endTime: '10:00',
+      activity: '',
+      location: '',
+      type: 'class'
+    });
   };
 
   if (loading) {
@@ -112,11 +176,143 @@ const RoutineManager = ({ user }) => {
           className="btn btn-primary"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
+          onClick={openForm}
         >
           <FiPlus />
           Add Routine
         </motion.button>
       </div>
+
+      {/* Add Routine Form */}
+      {showForm && (
+        <motion.div
+          className="routine-form-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className="routine-form"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.8, opacity: 0 }}
+          >
+            <div className="form-header">
+              <h3>Add New Routine</h3>
+              <button className="close-btn" onClick={closeForm}>
+                <FiX />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit}>
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="day">Day</label>
+                  <select
+                    id="day"
+                    name="day"
+                    value={formData.day}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    {days.map(day => (
+                      <option key={day.id} value={day.id}>
+                        {day.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="type">Type</label>
+                  <select
+                    id="type"
+                    name="type"
+                    value={formData.type}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    <option value="class">Class</option>
+                    <option value="study">Study</option>
+                    <option value="break">Break</option>
+                    <option value="activity">Activity</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="startTime">Start Time</label>
+                  <input
+                    type="time"
+                    id="startTime"
+                    name="startTime"
+                    value={formData.startTime}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="endTime">End Time</label>
+                  <input
+                    type="time"
+                    id="endTime"
+                    name="endTime"
+                    value={formData.endTime}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="activity">Activity</label>
+                <input
+                  type="text"
+                  id="activity"
+                  name="activity"
+                  value={formData.activity}
+                  onChange={handleInputChange}
+                  placeholder="e.g., Computer Science 101"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="location">Location</label>
+                <input
+                  type="text"
+                  id="location"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleInputChange}
+                  placeholder="e.g., Room 301"
+                  required
+                />
+              </div>
+
+              <div className="form-actions">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={closeForm}
+                  disabled={submitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={submitting}
+                >
+                  {submitting ? 'Adding...' : 'Add Routine'}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </motion.div>
+      )}
 
       {/* Day Selector */}
       <div className="day-selector">
@@ -153,13 +349,13 @@ const RoutineManager = ({ user }) => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <div 
+                  <div
                     className="routine-type-indicator"
                     style={{ backgroundColor: getTypeColor(routine.type) }}
                   >
                     {getTypeLabel(routine.type)}
                   </div>
-                  
+
                   <div className="routine-details">
                     <div className="routine-header-info">
                       <h3>{routine.activity}</h3>
@@ -167,7 +363,7 @@ const RoutineManager = ({ user }) => {
                         <button className="action-btn">
                           <FiEdit3 />
                         </button>
-                        <button 
+                        <button
                           className="action-btn delete"
                           onClick={() => handleDeleteRoutine(routine.id)}
                         >
@@ -175,7 +371,7 @@ const RoutineManager = ({ user }) => {
                         </button>
                       </div>
                     </div>
-                    
+
                     <div className="routine-info">
                       <div className="info-item">
                         <FiClock />
@@ -199,7 +395,7 @@ const RoutineManager = ({ user }) => {
             {days.map((day) => {
               const dayRoutines = getRoutinesForDay(day.id);
               return (
-                <div 
+                <div
                   key={day.id}
                   className={`week-day ${selectedDay === day.id ? 'active' : ''}`}
                   onClick={() => setSelectedDay(day.id)}

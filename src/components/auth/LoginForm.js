@@ -63,8 +63,9 @@ const LoginForm = () => {
       transition={{ duration: 0.3 }}
     >
       {/* Email Field */}
-      <div className="form-group">
-        <div className="input-wrapper">
+      <div className="form-group-signup">
+        <div className="input-wrapper"
+        >
           <FiMail className="input-icon" />
           <input
             type="email"
@@ -74,12 +75,13 @@ const LoginForm = () => {
             onChange={handleChange}
             required
             className="form-input"
+
           />
         </div>
       </div>
 
       {/* Password Field */}
-      <div className="form-group">
+      <div className="form-group-signup">
         <div className="input-wrapper">
           <FiLock className="input-icon" />
           <input
