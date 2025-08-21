@@ -9,6 +9,9 @@ const mysql = require('mysql2/promise');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const routineRoutes = require('./routes/routines');
+const feedbackRoutes = require("./routes/feedback");
+
+
 
 // Load environment variables
 dotenv.config();
@@ -123,6 +126,16 @@ const initializeDatabase = async (connection) => {
       )
     `);
 
+    // ✅ Create feedback table
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS feedback (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        studentId INT NULL,
+        message TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     console.log('✅ Database tables initialized successfully');
   } catch (error) {
     console.error('❌ Database initialization failed:', error);
@@ -147,6 +160,8 @@ app.use(async (req, res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/routines', routineRoutes);
+app.use("/api/feedback", feedbackRoutes);
+
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
