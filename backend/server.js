@@ -10,8 +10,7 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const routineRoutes = require('./routes/routines');
 const feedbackRoutes = require("./routes/feedback");
-
-
+const bugRoutes = require("./routes/bugs");
 
 // Load environment variables
 dotenv.config();
@@ -46,6 +45,7 @@ const createDatabaseConnection = async () => {
       user: process.env.DB_USER || 'root',
       password: process.env.DB_PASSWORD || '',
       database: process.env.DB_NAME || 'campus_connect',
+      port: process.env.DB_PORT || 3306,   // ✅ added port fallback
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0
@@ -62,7 +62,7 @@ const createDatabaseConnection = async () => {
 // Initialize database
 const initializeDatabase = async (connection) => {
   try {
-    // Create users table
+    // Users table
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -80,7 +80,7 @@ const initializeDatabase = async (connection) => {
       )
     `);
 
-    // Create routines table
+    // Routines table
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS routines (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -97,7 +97,7 @@ const initializeDatabase = async (connection) => {
       )
     `);
 
-    // Create friends table
+    // Friends table
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS friends (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -112,7 +112,7 @@ const initializeDatabase = async (connection) => {
       )
     `);
 
-    // Create notifications table
+    // Notifications table
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS notifications (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -126,12 +126,25 @@ const initializeDatabase = async (connection) => {
       )
     `);
 
-    // ✅ Create feedback table
+    // Feedback table
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS feedback (
         id INT AUTO_INCREMENT PRIMARY KEY,
         studentId INT NULL,
         message TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // ✅ Bug reports table
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS bug_reports (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        studentId INT NULL,
+        title VARCHAR(255) NOT NULL,
+        description TEXT NOT NULL,
+        severity ENUM('low', 'medium', 'high') DEFAULT 'low',
+        status ENUM('open', 'in_progress', 'resolved') DEFAULT 'open',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -161,21 +174,21 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/routines', routineRoutes);
 app.use("/api/feedback", feedbackRoutes);
+app.use("/api/bugs", bugRoutes);
 
-
-// Health check endpoint
+// Health check
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     message: 'CampusConnectPlayHub API is running',
     timestamp: new Date().toISOString()
   });
 });
 
-// Error handling middleware
+// Error handler
 app.use((err, req, res, next) => {
   console.error('Error:', err);
-  res.status(500).json({ 
+  res.status(500).json({
     message: 'Internal server error',
     error: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
@@ -188,13 +201,11 @@ app.use('*', (req, res) => {
 
 // Start server
 const PORT = process.env.PORT || 5000;
-
 const startServer = async () => {
   try {
-    // Initialize database
     const connection = await createDatabaseConnection();
     await initializeDatabase(connection);
-    
+
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📱 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
@@ -205,7 +216,6 @@ const startServer = async () => {
     process.exit(1);
   }
 };
-
 startServer();
 
 // Graceful shutdown
@@ -213,7 +223,6 @@ process.on('SIGTERM', () => {
   console.log('SIGTERM received, shutting down gracefully');
   process.exit(0);
 });
-
 process.on('SIGINT', () => {
   console.log('SIGINT received, shutting down gracefully');
   process.exit(0);

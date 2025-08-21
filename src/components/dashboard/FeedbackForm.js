@@ -15,12 +15,12 @@ const FeedbackForm = () => {
     }
 
     try {
-      await axios.post("http://localhost:5000/api/feedback", {
-        studentId: null, // later you can connect with logged-in user
+      await axios.post("/api/feedback", {
+        studentId: null, // later connect to logged-in user
         message,
       });
 
-      toast.success("Feedback submitted!");
+      toast.success("✅ Feedback submitted!");
       setMessage("");
     } catch (err) {
       console.error("❌ Feedback error:", err);
