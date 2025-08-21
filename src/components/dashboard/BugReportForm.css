@@ -1,0 +1,64 @@
+.bug-container {
+  background: rgba(26, 26, 46, 0.9);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 100, 100, 0.3);
+  border-radius: 20px;
+  padding: 24px;
+  margin: 24px auto;
+  max-width: 600px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  animation: fadeIn 0.6s ease-out;
+}
+
+.bug-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: #ff6b6b;
+  text-shadow: 0 0 12px rgba(255, 100, 100, 0.6);
+}
+
+.bug-input,
+.bug-textarea,
+.bug-select {
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 2px solid rgba(255, 100, 100, 0.3);
+  background: rgba(15, 15, 35, 0.8);
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease;
+}
+
+.bug-input:focus,
+.bug-textarea:focus,
+.bug-select:focus {
+  border-color: #ff6b6b;
+  box-shadow: 0 0 15px rgba(255, 100, 100, 0.5);
+  outline: none;
+}
+
+.bug-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ff6b6b, #ff3d3d);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.bug-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 100, 100, 0.4);
+}
+.bug-btn:active {
+  transform: translateY(0);
+  box-shadow: none;
+}

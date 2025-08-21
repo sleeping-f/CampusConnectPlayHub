@@ -9,6 +9,8 @@ const mysql = require('mysql2/promise');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const routineRoutes = require('./routes/routines');
+const feedbackRoutes = require("./routes/feedback");
+const bugRoutes = require("./routes/bugs");
 
 // Load environment variables
 dotenv.config();
@@ -122,6 +124,28 @@ const initializeDatabase = async (connection) => {
         FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
       )
     `);
+    // Feedback table
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS feedback (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        studentId INT NULL,
+        message TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // ✅ Bug reports table
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS bug_reports (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        studentId INT NULL,
+        title VARCHAR(255) NOT NULL,
+        description TEXT NOT NULL,
+        severity ENUM('low', 'medium', 'high') DEFAULT 'low',
+        status ENUM('open', 'in_progress', 'resolved') DEFAULT 'open',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
     console.log('✅ Database tables initialized successfully');
   } catch (error) {
@@ -147,11 +171,13 @@ app.use(async (req, res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/routines', routineRoutes);
+app.use("/api/feedback", feedbackRoutes);
+app.use("/api/bugs", bugRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     message: 'CampusConnectPlayHub API is running',
     timestamp: new Date().toISOString()
   });
@@ -160,7 +186,7 @@ app.get('/api/health', (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);
-  res.status(500).json({ 
+  res.status(500).json({
     message: 'Internal server error',
     error: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
@@ -179,7 +205,7 @@ const startServer = async () => {
     // Initialize database
     const connection = await createDatabaseConnection();
     await initializeDatabase(connection);
-    
+
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📱 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);

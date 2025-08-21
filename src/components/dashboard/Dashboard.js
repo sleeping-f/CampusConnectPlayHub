@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
-import { FiUser, FiCalendar, FiClock, FiSettings, FiLogOut, FiPlus, FiEdit3, FiUsers } from 'react-icons/fi';
+import { FiUser, FiCalendar, FiClock, FiSettings, FiLogOut, FiPlus, FiEdit3, FiUsers, FiAlertTriangle } from 'react-icons/fi';
 import StudentInfo from './StudentInfo';
 import RoutineManager from './RoutineManager';
 import FriendFinder from './FriendFinder';
 import './Dashboard.css';
+import FeedbackForm from "./FeedbackForm";
+import BugReportForm from "./BugReportForm";
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('info');
   const [showRoutineModal, setShowRoutineModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [showBugModal, setShowBugModal] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -91,21 +95,30 @@ const Dashboard = () => {
               <h3>Quick Actions</h3>
               <motion.button
                 className="action-btn"
-                onClick={() => setShowRoutineModal(true)}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <FiPlus />
-                Add Routine
-              </motion.button>
-              <motion.button
-                className="action-btn"
                 onClick={() => setActiveTab('friends')}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
                 <FiUsers />
                 Find Friends
+              </motion.button>
+              <motion.button
+                className="action-btn"
+                onClick={() => setShowFeedbackModal(true)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <FiEdit3 />
+                Give Feedback
+              </motion.button>
+              <motion.button
+                className="action-btn"
+                onClick={() => setShowBugModal(true)} // ✅ bug report modal
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <FiAlertTriangle />
+                Report Bug
               </motion.button>
             </div>
           </aside>
@@ -132,6 +145,15 @@ const Dashboard = () => {
           user={user}
         />
       )}
+      {/* Feedback Modal */}
+      {showFeedbackModal && (
+        <FeedbackModal onClose={() => setShowFeedbackModal(false)} />
+      )}
+
+      {/* Bug Modal */}
+      {showBugModal && (
+        <BugModal onClose={() => setShowBugModal(false)} />
+      )}
     </div>
   );
 };
@@ -153,6 +175,7 @@ const RoutineModal = ({ onClose, user }) => {
     console.log('Saving routine:', routineData);
     onClose();
   };
+
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -225,6 +248,7 @@ const RoutineModal = ({ onClose, user }) => {
             </div>
           </div>
 
+
           <div className="form-group">
             <label>Activity</label>
             <input
@@ -256,6 +280,52 @@ const RoutineModal = ({ onClose, user }) => {
             </button>
           </div>
         </form>
+      </motion.div>
+    </div>
+  );
+};
+
+// Feedback Modal Component
+const FeedbackModal = ({ onClose }) => {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <motion.div
+        className="modal-content"
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.9 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="modal-header">
+          <h2>Share Your Feedback</h2>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        <div className="modal-form">
+          <FeedbackForm />
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+// Bug Modal Component ✅
+const BugModal = ({ onClose }) => {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <motion.div
+        className="modal-content"
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.9 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="modal-header">
+          <h2>Report a Bug</h2>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        <div className="modal-form">
+          <BugReportForm />
+        </div>
       </motion.div>
     </div>
   );
