@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FiUser, FiMail, FiHash, FiBookOpen, FiEdit3, FiSave, FiX } from 'react-icons/fi';
+import axios from 'axios';
 import './StudentInfo.css';
 import GradientText from '../extra_designings/GradientText';
 
 const StudentInfo = ({ user }) => {
   console.log('User data:', user);
   const [isEditing, setIsEditing] = useState(false);
+  const [friendsCount, setFriendsCount] = useState(0);
   const [editData, setEditData] = useState({
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
@@ -14,6 +16,21 @@ const StudentInfo = ({ user }) => {
     studentId: user?.studentId || '',
     department: user?.department || '',
   });
+
+  useEffect(() => {
+    if (user) {
+      fetchFriendsCount();
+    }
+  }, [user]);
+
+  const fetchFriendsCount = async () => {
+    try {
+      const response = await axios.get('/api/users/friends');
+      setFriendsCount(response.data.friends?.length || 0);
+    } catch (error) {
+      console.error('Error fetching friends count:', error);
+    }
+  };
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -267,7 +284,7 @@ const StudentInfo = ({ user }) => {
           </GradientText></h3>
           <div className="stats-grid">
             <div className="stat-card">
-              <div className="stat-number">0</div>
+              <div className="stat-number">{friendsCount}</div>
               <div className="stat-label">Friends</div>
             </div>
             <div className="stat-card">

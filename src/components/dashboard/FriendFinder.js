@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiSearch, FiUserPlus, FiMail, FiHash, FiUsers, FiCheck, FiX, FiLoader } from 'react-icons/fi';
+import { FiSearch, FiUserPlus, FiMail, FiHash, FiUsers, FiCheck, FiX, FiLoader, FiEye } from 'react-icons/fi';
 import { useAuth } from '../../contexts/AuthContext';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import FriendProfile from './FriendProfile';
 import './FriendFinder.css';
 
 const FriendFinder = () => {
@@ -18,6 +19,7 @@ const FriendFinder = () => {
     const [isLoadingFriends, setIsLoadingFriends] = useState(false);
     const [isLoadingRequests, setIsLoadingRequests] = useState(false);
     const [error, setError] = useState(null);
+    const [selectedFriend, setSelectedFriend] = useState(null);
 
     useEffect(() => {
         if (user) {
@@ -136,6 +138,14 @@ const FriendFinder = () => {
 
     const getInitials = (firstName, lastName) => {
         return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase();
+    };
+
+    const handleViewFriendProfile = (friend) => {
+        setSelectedFriend(friend);
+    };
+
+    const handleCloseFriendProfile = () => {
+        setSelectedFriend(null);
     };
 
     return (
@@ -336,13 +346,24 @@ const FriendFinder = () => {
                                                 <p className="friend-department">{friend.department}</p>
                                             )}
                                         </div>
-                                        <button
-                                            className="remove-friend-btn"
-                                            onClick={() => removeFriend(friend.id)}
-                                            title="Remove Friend"
-                                        >
-                                            <FiX />
-                                        </button>
+                                        <div className="friend-actions">
+                                            <motion.button
+                                                className="view-profile-btn"
+                                                onClick={() => handleViewFriendProfile(friend)}
+                                                title="View Profile"
+                                                whileHover={{ scale: 1.05 }}
+                                                whileTap={{ scale: 0.95 }}
+                                            >
+                                                <FiEye />
+                                            </motion.button>
+                                            <button
+                                                className="remove-friend-btn"
+                                                onClick={() => removeFriend(friend.id)}
+                                                title="Remove Friend"
+                                            >
+                                                <FiX />
+                                            </button>
+                                        </div>
                                     </motion.div>
                                 ))}
                             </div>
@@ -434,6 +455,15 @@ const FriendFinder = () => {
                         )}
                     </div>
                 </motion.div>
+            )}
+
+            {/* Friend Profile Modal */}
+            {selectedFriend && (
+                <FriendProfile
+                    friend={selectedFriend}
+                    onClose={handleCloseFriendProfile}
+                    onBack={handleCloseFriendProfile}
+                />
             )}
         </div>
     );

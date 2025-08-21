@@ -402,6 +402,31 @@
     transform: scale(1.1);
 }
 
+.friend-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.view-profile-btn {
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.view-profile-btn:hover {
+    background: #5a67d8;
+    transform: scale(1.1);
+}
+
 /* Requests Tab */
 .requests-section {
     background: rgba(255, 255, 255, 0.05);

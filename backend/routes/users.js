@@ -53,9 +53,9 @@ router.put('/profile', authenticateToken, [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        message: 'Validation failed', 
-        errors: errors.array() 
+      return res.status(400).json({
+        message: 'Validation failed',
+        errors: errors.array()
       });
     }
 
@@ -163,9 +163,9 @@ router.post('/friends/request', authenticateToken, [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        message: 'Validation failed', 
-        errors: errors.array() 
+      return res.status(400).json({
+        message: 'Validation failed',
+        errors: errors.array()
       });
     }
 
@@ -224,9 +224,9 @@ router.put('/friends/respond', authenticateToken, [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        message: 'Validation failed', 
-        errors: errors.array() 
+      return res.status(400).json({
+        message: 'Validation failed',
+        errors: errors.array()
       });
     }
 
@@ -379,6 +379,40 @@ router.put('/notifications/read-all', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Mark all notifications read error:', error);
     res.status(500).json({ message: 'Failed to mark notifications as read' });
+  }
+});
+
+// Get routines for a specific user (friend)
+router.get('/:userId/routines', authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Check if the user is a friend
+    const [friendship] = await req.db.execute(
+      `SELECT id FROM friends 
+       WHERE ((userId = ? AND friendId = ?) OR (userId = ? AND friendId = ?)) 
+       AND status = 'accepted'`,
+      [req.user.userId, userId, userId, req.user.userId]
+    );
+
+    if (friendship.length === 0) {
+      return res.status(403).json({ message: 'Access denied. User is not your friend.' });
+    }
+
+    // Get user's routines
+    const [routines] = await req.db.execute(
+      `SELECT id, day, startTime, endTime, activity, location, type, createdAt, updatedAt
+       FROM routines 
+       WHERE userId = ?
+       ORDER BY day, startTime`,
+      [userId]
+    );
+
+    res.json({ routines });
+
+  } catch (error) {
+    console.error('Get user routines error:', error);
+    res.status(500).json({ message: 'Failed to get user routines' });
   }
 });
 
