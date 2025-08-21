@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
-import { FiUser, FiCalendar, FiClock, FiSettings, FiLogOut, FiPlus, FiEdit3 } from 'react-icons/fi';
+import { FiUser, FiCalendar, FiClock, FiSettings, FiLogOut, FiPlus, FiEdit3, FiUsers } from 'react-icons/fi';
 import StudentInfo from './StudentInfo';
 import RoutineManager from './RoutineManager';
+import FriendFinder from './FriendFinder';
 import './Dashboard.css';
 
 const Dashboard = () => {
@@ -18,6 +19,7 @@ const Dashboard = () => {
   const tabs = [
     { id: 'info', label: 'Profile', icon: FiUser },
     { id: 'routine', label: 'Routine', icon: FiCalendar },
+    { id: 'friends', label: 'Friends', icon: FiUsers },
   ];
 
   const renderTabContent = () => {
@@ -26,6 +28,8 @@ const Dashboard = () => {
         return <StudentInfo user={user} />;
       case 'routine':
         return <RoutineManager user={user} />;
+      case 'friends':
+        return <FriendFinder />;
       default:
         return <StudentInfo user={user} />;
     }
@@ -96,11 +100,11 @@ const Dashboard = () => {
               </motion.button>
               <motion.button
                 className="action-btn"
-                onClick={() => {/* TODO: Navigate to friends */ }}
+                onClick={() => setActiveTab('friends')}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <FiUser />
+                <FiUsers />
                 Find Friends
               </motion.button>
             </div>
