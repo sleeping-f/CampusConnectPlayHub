@@ -298,6 +298,23 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
+.form-group-signup input,
+.form-group-signup select {
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  font-size: 0.95rem;
+  font-family: 'Inter', sans-serif;
+  background: rgba(31, 41, 55, 0.8);
+  color: #ffffff;
+  transition: all 0.3s ease;
+  outline: none;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
 .form-group input:focus,
 .form-group select:focus {
   border-color: #667eea;
