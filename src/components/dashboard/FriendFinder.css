@@ -335,7 +335,7 @@
 }
 
 .friend-card {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
     border-radius: 1rem;
     padding: 1.5rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -349,7 +349,9 @@
 
 .friend-card:hover {
     transform: translateY(-3px);
-    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .friend-avatar {
@@ -361,6 +363,14 @@
     width: 60px;
     height: 60px;
     border-radius: 50%;
+    border: 3px solid rgba(102, 126, 234, 0.3);
+    transition: all 0.3s ease;
+}
+
+.friend-card:hover .friend-avatar img,
+.friend-card:hover .friend-avatar .avatar-placeholder {
+    border-color: rgba(102, 126, 234, 0.6);
+    transform: scale(1.05);
 }
 
 .friend-info {
@@ -368,22 +378,31 @@
 }
 
 .friend-info h4 {
-    color: #1f2937;
+    color: #ffffff;
     margin: 0 0 0.25rem 0;
     font-size: 1.1rem;
     font-weight: 600;
 }
 
 .friend-email,
-.friend-student-id,
 .friend-department {
-    color: #6b7280;
+    color: #9ca3af;
     margin: 0.1rem 0;
     font-size: 0.85rem;
 }
 
+.friend-student-id {
+    color: #667eea;
+    margin: 0.1rem 0;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
 .remove-friend-btn {
-    background: #ef4444;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
     color: white;
     border: none;
     border-radius: 50%;
@@ -395,11 +414,13 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
 }
 
 .remove-friend-btn:hover {
-    background: #dc2626;
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
     transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
 }
 
 .friend-actions {
@@ -409,7 +430,7 @@
 }
 
 .view-profile-btn {
-    background: #667eea;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     border: none;
     border-radius: 50%;
@@ -420,11 +441,13 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 }
 
 .view-profile-btn:hover {
-    background: #5a67d8;
+    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
     transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
 
 /* Requests Tab */
@@ -443,7 +466,7 @@
 }
 
 .request-card {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
     border-radius: 1rem;
     padding: 1.5rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -453,7 +476,9 @@
 
 .request-card:hover {
     transform: translateY(-3px);
-    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .request-avatar {
@@ -466,6 +491,14 @@
     width: 70px;
     height: 70px;
     border-radius: 50%;
+    border: 3px solid rgba(102, 126, 234, 0.3);
+    transition: all 0.3s ease;
+}
+
+.request-card:hover .request-avatar img,
+.request-card:hover .request-avatar .avatar-placeholder {
+    border-color: rgba(102, 126, 234, 0.6);
+    transform: scale(1.05);
 }
 
 .request-info {
@@ -474,18 +507,28 @@
 }
 
 .request-info h4 {
-    color: #1f2937;
+    color: #ffffff;
     margin: 0 0 0.5rem 0;
     font-size: 1.2rem;
     font-weight: 600;
 }
 
 .request-email,
-.request-student-id,
 .request-department {
-    color: #6b7280;
+    color: #9ca3af;
     margin: 0.25rem 0;
     font-size: 0.9rem;
+}
+
+.request-student-id {
+    color: #667eea;
+    margin: 0.25rem 0;
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
 }
 
 .request-actions {

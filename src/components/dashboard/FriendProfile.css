@@ -4,7 +4,8 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(10px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -13,13 +14,15 @@
 }
 
 .friend-profile-modal {
-    background: white;
+    background: rgba(17, 24, 39, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 1.5rem;
     max-width: 800px;
     width: 100%;
     max-height: 90vh;
     overflow-y: auto;
-    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(20px);
     position: relative;
 }
 
@@ -28,32 +31,37 @@
     justify-content: space-between;
     align-items: center;
     padding: 1.5rem 2rem;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.02);
 }
 
 .back-btn {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: none;
-    border: none;
-    color: #6b7280;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #9ca3af;
     font-size: 0.9rem;
     cursor: pointer;
-    transition: color 0.3s ease;
+    transition: all 0.3s ease;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
 }
 
 .back-btn:hover {
-    color: #374151;
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
 }
 
 .close-btn {
-    background: none;
-    border: none;
-    color: #6b7280;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #9ca3af;
     font-size: 1.5rem;
     cursor: pointer;
-    transition: color 0.3s ease;
+    transition: all 0.3s ease;
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -64,7 +72,8 @@
 
 .close-btn:hover {
     color: #ef4444;
-    background: #fef2f2;
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
 }
 
 .friend-profile-info {
@@ -72,7 +81,8 @@
     align-items: center;
     gap: 2rem;
     padding: 2rem;
-    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .friend-avatar {
@@ -105,12 +115,12 @@
     margin: 0 0 0.5rem 0;
     font-size: 1.75rem;
     font-weight: 700;
-    color: #1f2937;
+    color: #ffffff;
 }
 
 .friend-email {
     margin: 0 0 0.25rem 0;
-    color: #6b7280;
+    color: #9ca3af;
     font-size: 1rem;
 }
 
@@ -125,9 +135,9 @@
 
 .friend-tabs {
     display: flex;
-    background: #f8fafc;
+    background: rgba(255, 255, 255, 0.02);
     padding: 0 2rem;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .tab-btn {
@@ -137,7 +147,7 @@
     padding: 1rem 1.5rem;
     background: none;
     border: none;
-    color: #6b7280;
+    color: #9ca3af;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -145,13 +155,13 @@
 }
 
 .tab-btn:hover {
-    color: #374151;
+    color: #ffffff;
 }
 
 .tab-btn.active {
     color: #667eea;
     border-bottom-color: #667eea;
-    background: white;
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .friend-tab-content {
@@ -169,9 +179,10 @@
     align-items: center;
     gap: 1rem;
     padding: 1rem;
-    background: #f8fafc;
+    background: rgba(255, 255, 255, 0.05);
     border-radius: 0.75rem;
-    border: 1px solid #e5e7eb;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
 }
 
 .detail-icon {
@@ -189,7 +200,7 @@
 .detail-content label {
     display: block;
     font-size: 0.8rem;
-    color: #6b7280;
+    color: #9ca3af;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 0.25rem;
@@ -198,7 +209,7 @@
 .detail-content p {
     margin: 0;
     font-weight: 600;
-    color: #1f2937;
+    color: #ffffff;
 }
 
 .routines-grid {
@@ -208,16 +219,18 @@
 }
 
 .routine-card {
-    background: white;
+    background: rgba(255, 255, 255, 0.05);
     border-radius: 1rem;
     overflow: hidden;
-    border: 1px solid #e5e7eb;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
 }
 
 .routine-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.2);
 }
 
 .routine-day-header {
@@ -240,7 +253,7 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: #6b7280;
+    color: #9ca3af;
     font-size: 0.9rem;
     margin-bottom: 1rem;
 }
@@ -249,12 +262,12 @@
     margin: 0 0 0.5rem 0;
     font-size: 1.1rem;
     font-weight: 600;
-    color: #1f2937;
+    color: #ffffff;
 }
 
 .routine-location {
     margin: 0 0 1rem 0;
-    color: #6b7280;
+    color: #9ca3af;
     font-size: 0.9rem;
 }
 
@@ -291,13 +304,13 @@
 .loading-state {
     text-align: center;
     padding: 4rem 2rem;
-    color: #6b7280;
+    color: #9ca3af;
 }
 
 .loading-spinner {
     width: 3rem;
     height: 3rem;
-    border: 3px solid #e5e7eb;
+    border: 3px solid rgba(255, 255, 255, 0.1);
     border-top: 3px solid #667eea;
     border-radius: 50%;
     animation: spin 1s linear infinite;
@@ -317,17 +330,17 @@
 .empty-state {
     text-align: center;
     padding: 4rem 2rem;
-    color: #6b7280;
+    color: #9ca3af;
 }
 
 .empty-icon {
     font-size: 4rem;
-    color: #d1d5db;
+    color: rgba(255, 255, 255, 0.2);
     margin-bottom: 1rem;
 }
 
 .empty-state h3 {
-    color: #374151;
+    color: #ffffff;
     margin: 0 0 0.5rem 0;
     font-size: 1.5rem;
     font-weight: 600;

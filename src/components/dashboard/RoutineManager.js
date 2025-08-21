@@ -316,17 +316,23 @@ const RoutineManager = ({ user }) => {
 
       {/* Day Selector */}
       <div className="day-selector">
-        {days.map((day) => (
-          <motion.button
-            key={day.id}
-            className={`day-btn ${selectedDay === day.id ? 'active' : ''}`}
-            onClick={() => setSelectedDay(day.id)}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            {day.label}
-          </motion.button>
-        ))}
+        {days.map((day) => {
+          const dayRoutines = getRoutinesForDay(day.id);
+          return (
+            <motion.button
+              key={day.id}
+              className={`day-btn ${selectedDay === day.id ? 'active' : ''}`}
+              onClick={() => setSelectedDay(day.id)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <span className="day-label">{day.label}</span>
+              <div className="day-count-badge">
+                {dayRoutines.length}
+              </div>
+            </motion.button>
+          );
+        })}
       </div>
 
       {/* Routine Display */}
@@ -386,35 +392,6 @@ const RoutineManager = ({ user }) => {
                 </motion.div>
               ))
           )}
-        </div>
-
-        {/* Weekly Overview */}
-        <div className="weekly-overview">
-          <h3>Weekly Overview</h3>
-          <div className="week-grid">
-            {days.map((day) => {
-              const dayRoutines = getRoutinesForDay(day.id);
-              return (
-                <div
-                  key={day.id}
-                  className={`week-day ${selectedDay === day.id ? 'active' : ''}`}
-                  onClick={() => setSelectedDay(day.id)}
-                >
-                  <div className="day-name">{day.label.slice(0, 3)}</div>
-                  <div className="day-count">{dayRoutines.length}</div>
-                  <div className="day-indicators">
-                    {dayRoutines.slice(0, 3).map((routine, index) => (
-                      <div
-                        key={index}
-                        className="day-indicator"
-                        style={{ backgroundColor: getTypeColor(routine.type) }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </div>
       </div>
     </div>
