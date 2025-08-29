@@ -1,20 +1,22 @@
-const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
+const express = require('express');
 const mysql = require('mysql2/promise');
+
+// Load environment variables
+dotenv.config();
 
 // Import routes
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const routineRoutes = require('./routes/routines');
+const friendsRoutes = require('./routes/friends');
 const feedbackRoutes = require("./routes/feedback");
 const bugRoutes = require("./routes/bugs");
 const studyGroupsRoutes = require("./routes/study_groups");
- 
-// Load environment variables
-dotenv.config();
 
 const app = express();
 
@@ -65,19 +67,18 @@ const initializeDatabase = async (connection) => {
     // Create users table (Superclass)
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS users (
-        id INT AUTO_INCREMENT NOT NULL,
+        id INT AUTO_INCREMENT PRIMARY KEY,
         firstName VARCHAR(50) NOT NULL,
         lastName VARCHAR(50) NOT NULL,
         email VARCHAR(100) NOT NULL UNIQUE,
         password VARCHAR(255) NOT NULL,
-        userId VARCHAR(50) NOT NULL UNIQUE,      -- external/human campus ID
+        campus_id VARCHAR(50) NOT NULL UNIQUE,      -- external/human campus ID
         role ENUM('student', 'manager', 'admin') DEFAULT 'student',
         googleId VARCHAR(100),
         profileImage VARCHAR(255),
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        PRIMARY KEY (id)
-      );
+      ) ENGINE=InnoDB;
     `);
 
 // === Subclass tables (each row corresponds 1:1 with users.id) ===
@@ -110,7 +111,7 @@ const initializeDatabase = async (connection) => {
         year TINYINT UNSIGNED NULL,
         friend_count INT UNSIGNED NOT NULL DEFAULT 0,
         campus_coin INT UNSIGNED NOT NULL DEFAULT 0,
-        department VARCHAR(100) NULL,
+        department VARCHAR(100) NOT NULL,
         CONSTRAINT fk_student_user
           FOREIGN KEY (user_id) REFERENCES users(id)
           ON DELETE CASCADE
@@ -121,7 +122,7 @@ const initializeDatabase = async (connection) => {
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS routines (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        studentId INT NOT NULL,
+        student_id INT NOT NULL,
         day ENUM('monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday') NOT NULL,
         startTime TIME NOT NULL,
         endTime TIME NOT NULL,
@@ -130,22 +131,21 @@ const initializeDatabase = async (connection) => {
         type ENUM('class', 'study', 'break', 'activity') DEFAULT 'class',
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (studentId) REFERENCES users(id) ON DELETE CASCADE
+        FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
       );
     `);
 
     // Create friends table
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS friends (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        studentId INT NOT NULL,
-        friendId INT NOT NULL,
+        student_id_1 INT NOT NULL,
+        student_id_2 INT NOT NULL,
         status ENUM('pending', 'accepted', 'rejected') DEFAULT 'pending',
-        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (studentId) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (friendId) REFERENCES users(id) ON DELETE CASCADE,
-        UNIQUE KEY unique_friendship (studentId, friendId)
+        dateAdded TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (student_id_1, student_id_2),
+        CONSTRAINT friends_ordered CHECK (student_id_1 <> student_id_2),
+        CONSTRAINT fk_friend1 FOREIGN KEY (student_id_1) REFERENCES users(id) ON DELETE CASCADE,
+        CONSTRAINT fk_friend2 FOREIGN KEY (student_id_2) REFERENCES users(id) ON DELETE CASCADE
       );
     `);
 
@@ -155,10 +155,10 @@ const initializeDatabase = async (connection) => {
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
         description TEXT,
-        creatorId INT NOT NULL,          -- users.id (student who created)
+        creator_id INT NOT NULL,          -- users.id (student who created)
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (creatorId) REFERENCES users(id) ON DELETE CASCADE
+        FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE
       );
     `);
 
@@ -166,13 +166,13 @@ const initializeDatabase = async (connection) => {
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS study_group_members (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        groupId INT NOT NULL,
-        userId INT NOT NULL,
+        group_id INT NOT NULL,
+        user_id INT NOT NULL,
         role ENUM('member','owner') DEFAULT 'member',
         joinedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE KEY uniq_group_member (groupId, userId),
-        FOREIGN KEY (groupId) REFERENCES study_groups(id) ON DELETE CASCADE,
-        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+        UNIQUE KEY uniq_group_member (group_id, user_id),
+        FOREIGN KEY (group_id) REFERENCES study_groups(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );
     `);
 
@@ -180,13 +180,13 @@ const initializeDatabase = async (connection) => {
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS notifications (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        userId INT NOT NULL,
+        user_id INT NOT NULL,
         title VARCHAR(255) NOT NULL,
         message TEXT NOT NULL,
         type ENUM('friend_request', 'routine_reminder', 'system', 'achievement') DEFAULT 'system',
         isRead BOOLEAN DEFAULT FALSE,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );
     `);
 
@@ -233,9 +233,12 @@ app.use(async (req, res, next) => {
   }
 });
 
+app.set('trust proxy', 1); // or true
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/friends', friendsRoutes);
 app.use('/api/routines', routineRoutes);
 app.use("/api/feedback", feedbackRoutes);
 app.use("/api/bugs", bugRoutes);
