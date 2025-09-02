@@ -5,7 +5,6 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
 const express = require('express');
-const express = require('express');
 const mysql = require('mysql2/promise');
 
 dotenv.config();
@@ -27,8 +26,8 @@ const app = express();
 const corsOptions = {
   origin: (origin, cb) => cb(null, true),
   credentials: true,
-  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 };
 app.use(cors(corsOptions));
 // Fast-path preflight so it always carries CORS headers
@@ -271,4 +270,4 @@ const startServer = async () => {
 startServer();
 
 process.on('SIGTERM', () => { console.log('SIGTERM received, shutting down gracefully'); process.exit(0); });
-process.on('SIGINT',  () => { console.log('SIGINT received, shutting down gracefully');  process.exit(0); });
+process.on('SIGINT', () => { console.log('SIGINT received, shutting down gracefully'); process.exit(0); });
