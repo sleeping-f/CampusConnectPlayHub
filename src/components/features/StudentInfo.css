@@ -345,7 +345,7 @@
 /* Hover effects */
 .info-field:hover {
   background: linear-gradient(135deg, #1f1f47 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #533483 100%);
-  border-color: #d1d5db;
+  border-color: #dbd3d1;
 }
 
 .stat-card:hover .stat-number {

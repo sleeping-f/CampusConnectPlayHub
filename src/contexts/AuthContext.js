@@ -98,6 +98,30 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const refreshUser = async () => {
+    try {
+      const { data } = await axios.get('/api/users/me');
+      const updated = data?.profile || data?.user || data;
+      setUser(updated);
+      setIsAuthenticated(true);
+      return updated;
+    } catch (e) {
+      try {
+        const { data } = await axios.get('/api/auth/me');
+        const updated = data?.user || data;
+        setUser(updated);
+        setIsAuthenticated(true);
+        return updated;
+      } catch {
+        localStorage.removeItem('token');
+        delete axios.defaults.headers.common['Authorization'];
+        setIsAuthenticated(false);
+        setUser(null);
+        throw e;
+      }
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     delete axios.defaults.headers.common['Authorization'];
@@ -113,6 +137,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     googleLogin,
+    refreshUser,
     logout,
   };
 

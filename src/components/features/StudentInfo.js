@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FiUser, FiMail, FiHash, FiBookOpen, FiEdit3, FiSave, FiX } from 'react-icons/fi';
 import axios from 'axios';
+import { useAuth } from '../../contexts/AuthContext';
 import './StudentInfo.css';
 import GradientText from '../common/GradientText';
 
@@ -13,19 +14,36 @@ const StudentInfo = ({ user }) => {
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
     email: user?.email || '',
-    studentId: user?.studentId || '',
+    campus_id: user?.campus_id || '',
     department: user?.department || '',
   });
+  const { refreshUser } = useAuth();
 
   useEffect(() => {
-    if (user) {
-      fetchFriendsCount();
-    }
+    setEditData({
+      firstName: user?.firstName || '',
+      lastName:  user?.lastName  || '',
+      email:     user?.email     || '',
+      campus_id: user?.campus_id || '',
+      department:user?.department|| '',
+    });
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    setEditData({
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      email: user.email || '',
+      campus_id: user.campus_id || '',
+      department: user.department || '',
+    });
+    fetchFriendsCount();
   }, [user]);
 
   const fetchFriendsCount = async () => {
     try {
-      const response = await axios.get('/api/users/friends');
+      const response = await axios.get('/api/friends');
       setFriendsCount(response.data.friends?.length || 0);
     } catch (error) {
       console.error('Error fetching friends count:', error);
@@ -38,7 +56,14 @@ const StudentInfo = ({ user }) => {
 
   const handleSave = async () => {
     try {
-      // TODO: Update user data in backend
+      const payload = {
+        firstName: editData.firstName,
+        lastName:  editData.lastName,
+        email:     editData.email,
+        ...(user?.role === 'student' && { department: editData.department }),
+      };
+      await axios.patch('/api/users/me', payload);
+      await refreshUser();
       console.log('Saving user data:', editData);
       setIsEditing(false);
     } catch (error) {
@@ -51,7 +76,7 @@ const StudentInfo = ({ user }) => {
       firstName: user?.firstName || '',
       lastName: user?.lastName || '',
       email: user?.email || '',
-      studentId: user?.studentId || '',
+      campus_id: user?.campus_id || '',
       department: user?.department || '',
     });
     setIsEditing(false);
@@ -67,9 +92,8 @@ const StudentInfo = ({ user }) => {
   const getRoleDisplay = (role) => {
     const roleMap = {
       student: 'Student',
-      faculty: 'Faculty',
-      staff: 'University Staff',
-      admin: 'Administrator'
+      manager: 'Manager',
+      admin: 'Administrator',
     };
     return roleMap[role] || role;
   };
@@ -161,7 +185,7 @@ const StudentInfo = ({ user }) => {
                     value={editData.email}
                     onChange={handleChange}
                     className="form-input"
-                    disabled
+                    
                   />
                 </div>
 
@@ -171,10 +195,11 @@ const StudentInfo = ({ user }) => {
                       <label>Student ID</label>
                       <input
                         type="text"
-                        name="studentId"
-                        value={editData.studentId}
+                        name="campus_id"
+                        value={editData.campus_id}
                         onChange={handleChange}
                         className="form-input"
+                        disabled
                       />
                     </div>
 

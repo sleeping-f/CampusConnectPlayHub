@@ -5,7 +5,10 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AuthPage from './components/auth/AuthPage';
 import Dashboard from './components/features/Dashboard';
+<<<<<<< HEAD
 import AdminConsole from './components/features/AdminConsole'; // ⬅️ NEW
+=======
+>>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
 import './App.css';
 
 // Role-aware guard

@@ -1,18 +1,18 @@
+// backend/routes/users.js
 const express = require('express');
-const jwt = require('jsonwebtoken');
-const { body, query, validationResult } = require('express-validator');
+const { body, query, param, validationResult } = require('express-validator');
+
 const router = express.Router();
 
-<<<<<<< HEAD
-// ---------- Auth middleware ----------
-=======
- // Auth middleware (you shared this snippet)
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
+/**
+ * Auth middleware (you shared this snippet)
+ */
 const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+  const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   if (!token) return res.status(401).json({ message: 'Access token required' });
 
+  const jwt = require('jsonwebtoken');
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
     if (err) {
       console.error('JWT verify error:', err.name, err.message);
@@ -23,69 +23,17 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-<<<<<<< HEAD
-// ---------- Helpers ----------
-=======
 /**
  * Utility: standard error formatter
  */
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
 function sendValidationErrors(req, res) {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
-<<<<<<< HEAD
   }
   return null;
 }
 
-function shapeProfile(row) {
-  if (!row) return null;
-  return {
-    id: row.id,
-    campus_id: row.campus_id,
-    firstName: row.firstName,
-    lastName: row.lastName,
-    email: row.email,
-    role: row.role,
-    department: row.department ?? null,
-    createdAt: row.createdAt ?? null,
-    updatedAt: row.updatedAt ?? null,
-  };
-}
-
-// ---------- GET /api/users/me ----------
-// Use LEFT JOIN so admins/managers resolve without students row.
-router.get('/me', authenticateToken, async (req, res) => {
-  try {
-    const id = req.user.id;
-    const [rows] = await req.db.execute(
-      `
-      SELECT
-        u.id, u.firstName, u.lastName, u.email, u.role, u.campus_id,
-        u.createdAt, u.updatedAt,
-        s.department
-      FROM users u
-      LEFT JOIN students s ON s.user_id = u.id
-      WHERE u.id = ?
-      `,
-      [id]
-    );
-    if (rows.length === 0) return res.status(404).json({ message: 'User not found' });
-    return res.json({ profile: shapeProfile(rows[0]) });
-  } catch (err) {
-    console.error('GET /users/me error:', err);
-    return res.status(500).json({ message: 'Internal server error' });
-=======
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
-  }
-  return null;
-}
-
-<<<<<<< HEAD
-// ---------- GET /api/users/search ----------
-// Keep this students-only (INNER JOIN).
-=======
 /**
  * Shape a unified profile payload from joined rows.
  */
@@ -93,7 +41,7 @@ function shapeProfile(row) {
   if (!row) return null;
   return {
     id: row.id,
-    campus_id: row.campus_id, // alias for convenience
+    campus_id: row.id, // alias for convenience
     firstName: row.firstName,
     lastName: row.lastName,
     email: row.email,
@@ -133,7 +81,6 @@ router.get(
   }
 );
 
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
 router.get(
   '/search',
   authenticateToken,
@@ -151,28 +98,15 @@ router.get(
     try {
       const q = req.query.q;
       const like = `%${q}%`;
-<<<<<<< HEAD
-
-=======
       //const limit = req.query.limit || 20;
       //const offset = req.query.offset || 0;
 
       // Students only, implicit join form you requested
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
       const [rows] = await req.db.execute(
         `
         SELECT
           u.id, u.firstName, u.lastName, u.email, u.campus_id, u.role, u.createdAt,
           s.department
-<<<<<<< HEAD
-        FROM users u
-        INNER JOIN students s ON s.user_id = u.id
-        WHERE
-          u.firstName LIKE ?
-          OR u.lastName LIKE ?
-          OR u.email LIKE ?
-          OR u.campus_id LIKE ?
-=======
         FROM users u, students s
         WHERE u.id = s.user_id
           AND (
@@ -181,7 +115,6 @@ router.get(
             OR u.email LIKE ?
             OR u.campus_id LIKE ?
           )
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
         ORDER BY u.firstName, u.lastName
         `,
         [like, like, like, like]
@@ -195,14 +128,6 @@ router.get(
   }
 );
 
-<<<<<<< HEAD
-// ---------- PATCH /api/users/me ----------
-// Updates users; upserts department only if role === 'student'.
-// Return result with LEFT JOIN.
-router.patch(
-  '/me',
-  authenticateToken,
-=======
 /**
  * PATCH /api/users/me
  * Dynamic UPDATE for users table only (firstName, lastName, email).
@@ -214,7 +139,6 @@ router.patch(
   '/me',
   authenticateToken,
   // validate optional fields
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
   body('firstName').optional().isString().isLength({ min: 1, max: 100 }),
   body('lastName').optional().isString().isLength({ min: 1, max: 100 }),
   body('email').optional().isEmail().isLength({ max: 255 }),
@@ -226,24 +150,13 @@ router.patch(
     const { firstName, lastName, email, department } = req.body ?? {};
 
     try {
-<<<<<<< HEAD
-=======
       // Fetch current role to decide if we can touch students
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
       const [[current]] = await req.db.execute(
         `SELECT id, role FROM users WHERE id = ?`,
         [id]
       );
       if (!current) return res.status(404).json({ message: 'User not found' });
 
-<<<<<<< HEAD
-      const setParts = [];
-      const params = [];
-
-      if (typeof firstName !== 'undefined') { setParts.push('firstName = ?'); params.push(firstName); }
-      if (typeof lastName !== 'undefined')  { setParts.push('lastName = ?');  params.push(lastName);  }
-      if (typeof email !== 'undefined')     { setParts.push('email = ?');     params.push(email);     }
-=======
       // Build dynamic UPDATE for users table
       const setParts = [];
       const params = [];
@@ -260,51 +173,25 @@ router.patch(
         setParts.push('email = ?');
         params.push(email);
       }
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
 
       const willUpdateUsers = setParts.length > 0;
       const wantsDeptChange = typeof department !== 'undefined';
 
-<<<<<<< HEAD
-=======
       // Bail early if nothing to do
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
       if (!willUpdateUsers && !wantsDeptChange) {
         return res.status(400).json({ message: 'Nothing to update' });
       }
 
-<<<<<<< HEAD
-      await req.db.beginTransaction();
-      try {
-=======
       // Begin transaction to keep things consistent
       await req.db.beginTransaction();
       try {
         // Update users if needed
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
         if (willUpdateUsers) {
           const sql = `UPDATE users SET ${setParts.join(', ')} WHERE id = ?`;
           params.push(id);
           await req.db.execute(sql, params);
         }
 
-<<<<<<< HEAD
-        if (wantsDeptChange && current.role === 'student') {
-          const [sRows] = await req.db.execute(
-            `SELECT user_id FROM students WHERE user_id = ?`,
-            [id]
-          );
-          if (sRows.length === 0) {
-            await req.db.execute(
-              `INSERT INTO students (user_id, department) VALUES (?, ?)`,
-              [id, department]
-            );
-          } else {
-            await req.db.execute(
-              `UPDATE students SET department = ? WHERE user_id = ?`,
-              [department, id]
-            );
-=======
         // Upsert department into students if provided AND role === 'student'
         if (wantsDeptChange) {
           if (current.role !== 'student') {
@@ -329,7 +216,6 @@ router.patch(
                 [department, id]
               );
             }
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
           }
         }
 
@@ -339,18 +225,6 @@ router.patch(
         throw txErr;
       }
 
-<<<<<<< HEAD
-      // Re-select with LEFT JOIN
-      const [rows] = await req.db.execute(
-        `
-        SELECT
-          u.id, u.firstName, u.lastName, u.email, u.role, u.campus_id,
-          u.createdAt, u.updatedAt,
-          s.department
-        FROM users u
-        LEFT JOIN students s ON s.user_id = u.id
-        WHERE u.id = ?
-=======
       // Return updated profile via JOIN
       const [rows] = await req.db.execute(
         `
@@ -359,17 +233,13 @@ router.patch(
         FROM users u, students s
         WHERE s.user_id = u.id
         AND u.id = ?
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
         `,
         [id]
       );
       if (rows.length === 0) return res.status(404).json({ message: 'User not found after update' });
       return res.json({ profile: shapeProfile(rows[0]) });
     } catch (err) {
-<<<<<<< HEAD
-=======
       // Handle possible duplicate email error
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
       if (err && err.code === 'ER_DUP_ENTRY') {
         return res.status(409).json({ message: 'Email already in use' });
       }
@@ -379,8 +249,4 @@ router.patch(
   }
 );
 
-<<<<<<< HEAD
 module.exports = router;
-=======
-module.exports = router;
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231

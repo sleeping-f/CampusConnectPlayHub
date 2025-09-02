@@ -200,10 +200,6 @@
 }
 
 .user-card {
-<<<<<<< HEAD
-=======
-    max-width: 100%;
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
     background: rgba(255, 255, 255, 0.1);
     border-radius: 1rem;
     padding: 1.5rem;
@@ -230,10 +226,6 @@
 }
 
 .user-avatar {
-<<<<<<< HEAD
-=======
-    flex-shrink: 0;
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
     text-align: center;
     margin-bottom: 1rem;
 }
@@ -262,7 +254,6 @@
 
 .user-info {
     text-align: center;
-<<<<<<< HEAD
     margin-bottom: 1.5rem;
 }
 
@@ -284,39 +275,11 @@
     color: #9ca3af;
     margin: 0.25rem 0;
     font-size: 0.85rem;
-=======
-    margin-bottom: 1rem;
-}
-
-.user-info h4 {
-    color: #ffffff;
-    margin: 0 0 0.5rem 0;
-    font-size: 1.2rem;
-    font-weight: 600;
-}
-
-.user-email,
-.user-department {
-    color: #9ca3af;
-    margin: 0.1rem 0;
-    font-size: 0.85rem;
-}
-
-.user-student-id {
-    color: #667eea;
-    margin: 0.1rem 0;
-    font-size: 0.85rem;
-    font-weight: 500;
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.25rem;
-<<<<<<< HEAD
 }
-=======
-  }
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
 
 .add-friend-btn {
     width: 100%;
@@ -372,10 +335,6 @@
 }
 
 .friend-card {
-<<<<<<< HEAD
-=======
-    max-width: 100%;
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
     background: rgba(255, 255, 255, 0.05);
     border-radius: 1rem;
     padding: 1.5rem;
@@ -397,11 +356,6 @@
 
 .friend-avatar {
     flex-shrink: 0;
-<<<<<<< HEAD
-=======
-    text-align: center;
-    margin-bottom: 0rem;
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
 }
 
 .friend-avatar img,
@@ -425,13 +379,8 @@
 
 .friend-info h4 {
     color: #ffffff;
-<<<<<<< HEAD
     margin: 0 0 0.25rem 0;
     font-size: 1.1rem;
-=======
-    margin: 0 0 0.5rem 0;
-    font-size: 1.2rem;
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
     font-weight: 600;
 }
 
@@ -492,11 +441,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-<<<<<<< HEAD
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-=======
-    box-shadow: 0 4px 15px rgba(102, 26, 234, 0.3);
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
 }
 
 .view-profile-btn:hover {
@@ -516,32 +461,17 @@
 
 .requests-grid {
     display: grid;
-<<<<<<< HEAD
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-=======
-    grid-template-columns: 1fr;
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
     gap: 1.5rem;
 }
 
 .request-card {
-<<<<<<< HEAD
-=======
-    max-width: 100%;
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
     background: rgba(255, 255, 255, 0.05);
     border-radius: 1rem;
     padding: 1.5rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
     transition: all 0.3s ease;
-<<<<<<< HEAD
-=======
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
 }
 
 .request-card:hover {
@@ -552,14 +482,8 @@
 }
 
 .request-avatar {
-<<<<<<< HEAD
     text-align: center;
     margin-bottom: 1rem;
-=======
-    flex-shrink: 0;
-    text-align: center;
-    margin-bottom: 0rem;
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
 }
 
 .request-avatar img,
@@ -578,12 +502,8 @@
 }
 
 .request-info {
-<<<<<<< HEAD
     text-align: center;
     margin-bottom: 1.5rem;
-=======
-    flex: 1;
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
 }
 
 .request-info h4 {
@@ -596,31 +516,18 @@
 .request-email,
 .request-department {
     color: #9ca3af;
-<<<<<<< HEAD
     margin: 0.25rem 0;
     font-size: 0.9rem;
-=======
-    margin: 0.1rem 0;
-    font-size: 0.85rem;
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
 }
 
 .request-student-id {
     color: #667eea;
-<<<<<<< HEAD
     margin: 0.25rem 0;
     font-size: 0.9rem;
     font-weight: 500;
     display: flex;
     align-items: center;
     justify-content: center;
-=======
-    margin: 0.1rem 0;
-    font-size: 0.85rem;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
     gap: 0.25rem;
 }
 
@@ -630,11 +537,7 @@
 }
 
 .accept-btn,
-<<<<<<< HEAD
 .reject-btn {
-=======
-.decline-btn {
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
     flex: 1;
     padding: 0.75rem;
     border: none;
@@ -658,20 +561,12 @@
     box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
 }
 
-<<<<<<< HEAD
 .reject-btn {
-=======
-.decline-btn {
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
     background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
     color: white;
 }
 
-<<<<<<< HEAD
 .reject-btn:hover {
-=======
-.decline-btn:hover {
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
 }

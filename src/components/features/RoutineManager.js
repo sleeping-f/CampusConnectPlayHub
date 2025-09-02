@@ -26,7 +26,13 @@ const RoutineManager = ({ user }) => {
     try {
       const t = localStorage.getItem('token');
       return t ? { Authorization: `Bearer ${t}` } : {};
+<<<<<<< HEAD
     } catch { return {}; }
+=======
+    } catch {
+      return {};
+    }
+>>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
   };
 
   const days = [
@@ -57,6 +63,7 @@ const RoutineManager = ({ user }) => {
     }
   };
 
+<<<<<<< HEAD
   // 🔒 Block non-students
   if (!user || user.role !== 'student') {
     return (
@@ -66,6 +73,8 @@ const RoutineManager = ({ user }) => {
     );
   }
 
+=======
+>>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
   const getRoutinesForDay = (day) => routines.filter(r => r.day === day);
 
   const getTypeColor = (type) => ({
@@ -135,6 +144,18 @@ const RoutineManager = ({ user }) => {
     );
   }
 
+<<<<<<< HEAD
+=======
+  // 🔒 Block non-students
+  if (!user || user.role !== 'student') {
+    return (
+      <div className="routine-management-disabled">
+        <p> Only students can use the Routines feature.</p>
+      </div>
+    );
+  }
+
+>>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
   return (
     <div className="routine-manager">
       <div className="routine-header">

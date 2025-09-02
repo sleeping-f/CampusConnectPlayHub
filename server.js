@@ -1,55 +1,46 @@
-// server.js
 const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
 const express = require('express');
-const express = require('express');
 const mysql = require('mysql2/promise');
 
+// Load environment variables
 dotenv.config();
 
+// Import routes
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const routineRoutes = require('./routes/routines');
 const friendsRoutes = require('./routes/friends');
-const feedbackRoutes = require('./routes/feedback');
-const bugRoutes = require('./routes/bugs');
-const studyGroupsRoutes = require('./routes/study_groups');
-const studyGroupMembershipsRoutes = require('./routes/study_groups_memberships');
-const adminRoutes = require('./routes/admin');
+const feedbackRoutes = require("./routes/feedback");
+const bugRoutes = require("./routes/bugs");
+const studyGroupsRoutes = require("./routes/study_groups");
 
 const app = express();
 
-/* ------------------------- CORS: PERMISSIVE FOR DEV ------------------------- */
-// Allow any origin in dev to eliminate preflight issues while debugging
-const corsOptions = {
-  origin: (origin, cb) => cb(null, true),
-  credentials: true,
-  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization'],
-};
-app.use(cors(corsOptions));
-// Fast-path preflight so it always carries CORS headers
-app.use((req, res, next) => {
-  if (req.method === 'OPTIONS') return res.sendStatus(204);
-  return next();
+// Security middleware
+app.use(helmet());
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
 });
-/* --------------------------------------------------------------------------- */
-
-// Security middleware AFTER CORS
-app.use(helmet({ crossOriginResourcePolicy: false, crossOriginEmbedderPolicy: false }));
-
-// Rate limiting AFTER CORS
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 app.use(limiter);
 
-// Body parsing
+// CORS configuration
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true
+}));
+
+// Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-/* --------------------------- DB: connection per request -------------------- */
+// Database connection
 const createDatabaseConnection = async () => {
   try {
     const connection = await mysql.createConnection({
@@ -59,8 +50,9 @@ const createDatabaseConnection = async () => {
       database: process.env.DB_NAME || 'campus_connect',
       waitForConnections: true,
       connectionLimit: 10,
-      queueLimit: 0,
+      queueLimit: 0
     });
+
     console.log('✅ Database connected successfully');
     return connection;
   } catch (error) {
@@ -69,17 +61,19 @@ const createDatabaseConnection = async () => {
   }
 };
 
+// Initialize database
 const initializeDatabase = async (connection) => {
   try {
+    // Create users table (Superclass)
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
         firstName VARCHAR(50) NOT NULL,
         lastName VARCHAR(50) NOT NULL,
         email VARCHAR(100) NOT NULL UNIQUE,
-        password VARCHAR(100) NOT NULL,
-        campus_id VARCHAR(50) NOT NULL UNIQUE,
-        role ENUM('student','manager','admin') DEFAULT 'student',
+        password VARCHAR(255) NOT NULL,
+        campus_id VARCHAR(50) NOT NULL UNIQUE,      -- external/human campus ID
+        role ENUM('student', 'manager', 'admin') DEFAULT 'student',
         googleId VARCHAR(100),
         profileImage VARCHAR(255),
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -87,18 +81,29 @@ const initializeDatabase = async (connection) => {
       ) ENGINE=InnoDB;
     `);
 
+// === Subclass tables (each row corresponds 1:1 with users.id) ===
+
+    // Admins
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS admins (
         user_id INT PRIMARY KEY,
-        CONSTRAINT fk_admin_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        CONSTRAINT fk_admin_user
+          FOREIGN KEY (user_id) REFERENCES users(id)
+          ON DELETE CASCADE
       );
     `);
+
+    // Managers
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS managers (
         user_id INT PRIMARY KEY,
-        CONSTRAINT fk_manager_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        CONSTRAINT fk_manager_user
+          FOREIGN KEY (user_id) REFERENCES users(id)
+          ON DELETE CASCADE
       );
     `);
+
+    // Students
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS students (
         user_id INT PRIMARY KEY,
@@ -107,102 +112,105 @@ const initializeDatabase = async (connection) => {
         friend_count INT UNSIGNED NOT NULL DEFAULT 0,
         campus_coin INT UNSIGNED NOT NULL DEFAULT 0,
         department VARCHAR(100) NOT NULL,
-        CONSTRAINT fk_student_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        CONSTRAINT fk_student_user
+          FOREIGN KEY (user_id) REFERENCES users(id)
+          ON DELETE CASCADE
       );
     `);
 
+    // Create routines table
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS routines (
         id INT AUTO_INCREMENT PRIMARY KEY,
         student_id INT NOT NULL,
-        day ENUM('monday','tuesday','wednesday','thursday','friday','saturday','sunday') NOT NULL,
+        day ENUM('monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday') NOT NULL,
         startTime TIME NOT NULL,
         endTime TIME NOT NULL,
-        activity VARCHAR(100) NOT NULL,
-        location VARCHAR(100) NOT NULL,
-        type ENUM('class','study','break','activity') DEFAULT 'class',
+        activity VARCHAR(255) NOT NULL,
+        location VARCHAR(255) NOT NULL,
+        type ENUM('class', 'study', 'break', 'activity') DEFAULT 'class',
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
       );
-        FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
-      );
     `);
 
+    // Create friends table
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS friends (
         student_id_1 INT NOT NULL,
         student_id_2 INT NOT NULL,
-        status ENUM('pending','accepted','rejected') DEFAULT 'pending',
+        status ENUM('pending', 'accepted', 'rejected') DEFAULT 'pending',
         dateAdded TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (student_id_1, student_id_2),
         CONSTRAINT friends_ordered CHECK (student_id_1 <> student_id_2),
-        CONSTRAINT fk_student1 FOREIGN KEY (student_id_1) REFERENCES users(id) ON DELETE CASCADE,
-        CONSTRAINT fk_student2 FOREIGN KEY (student_id_2) REFERENCES users(id) ON DELETE CASCADE
+        CONSTRAINT fk_friend1 FOREIGN KEY (student_id_1) REFERENCES users(id) ON DELETE CASCADE,
+        CONSTRAINT fk_friend2 FOREIGN KEY (student_id_2) REFERENCES users(id) ON DELETE CASCADE
       );
     `);
 
+    // create study groups table
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS study_groups (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        group_name VARCHAR(100) NOT NULL,
+        name VARCHAR(100) NOT NULL,
         description TEXT,
-        creator_id INT NOT NULL,
-        date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT fk_sg_creator FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE
-      );
-    `);
-    await connection.execute(`
-      CREATE TABLE IF NOT EXISTS study_group_memberships (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        group_id INT NOT NULL,
-        student_id INT NOT NULL,
-        role ENUM('member','owner') DEFAULT 'member',
-        date_joined TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT fk_sgm_group FOREIGN KEY (group_id) REFERENCES study_groups(id) ON DELETE CASCADE,
-        CONSTRAINT fk_sgm_student FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
+        creator_id INT NOT NULL,          -- users.id (student who created)
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE
       );
     `);
 
+    // create memberships table
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS study_group_members (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        group_id INT NOT NULL,
+        user_id INT NOT NULL,
+        role ENUM('member','owner') DEFAULT 'member',
+        joinedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_group_member (group_id, user_id),
+        FOREIGN KEY (group_id) REFERENCES study_groups(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+    `);
+
+    // Create notifications table
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS notifications (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
-        user_id INT NOT NULL,
         title VARCHAR(255) NOT NULL,
         message TEXT NOT NULL,
-        type ENUM('friend_request','routine_reminder','system','achievement') DEFAULT 'system',
+        type ENUM('friend_request', 'routine_reminder', 'system', 'achievement') DEFAULT 'system',
         isRead BOOLEAN DEFAULT FALSE,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-      );
     `);
 
+    // Feedback table
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS feedback (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NULL,
+        studentId INT NULL,
         message TEXT NOT NULL,
-        status   ENUM('open','in_progress','resolved','closed') NOT NULL DEFAULT 'open',
-        priority ENUM('low','medium','high') DEFAULT 'medium',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT fk_feedback_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-      ) ENGINE=InnoDB;
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
+    // Bug reports table
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS bug_reports (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NULL,
-        title VARCHAR(100) NOT NULL,
+        studentId INT NULL,
+        title VARCHAR(255) NOT NULL,
         description TEXT NOT NULL,
-        severity ENUM('low','medium','high','critical') DEFAULT 'low',
-        status   ENUM('open','triaged','in_progress','fixed','closed') NOT NULL DEFAULT 'open',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT fk_bug_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-      ) ENGINE=InnoDB;
+        severity ENUM('low', 'medium', 'high') DEFAULT 'low',
+        status ENUM('open', 'in_progress', 'resolved') DEFAULT 'open',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
     console.log('✅ Database tables initialized successfully');
@@ -212,9 +220,12 @@ const initializeDatabase = async (connection) => {
   }
 };
 
+// Make database connection available to routes
 app.use(async (req, res, next) => {
   try {
-    if (!req.db) req.db = await createDatabaseConnection();
+    if (!req.db) {
+      req.db = await createDatabaseConnection();
+    }
     next();
   } catch (error) {
     console.error('Database connection error:', error);
@@ -222,39 +233,46 @@ app.use(async (req, res, next) => {
   }
 });
 
-app.set('trust proxy', 1);
+app.set('trust proxy', 1); // or true
 
-// Mount routes
+// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/routines', routineRoutes);
 app.use('/api/friends', friendsRoutes);
-app.use('/api/feedback', feedbackRoutes);
-app.use('/api/bugs', bugRoutes);
+app.use('/api/routines', routineRoutes);
+app.use("/api/feedback", feedbackRoutes);
+app.use("/api/bugs", bugRoutes);
 app.use('/api/study_groups', studyGroupsRoutes);
-app.use('/api/study_groups_memberships', studyGroupMembershipsRoutes);
-app.use('/api/admin', adminRoutes);
 
-// Health
+// Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'CampusConnectPlayHub API is running', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'OK',
+    message: 'CampusConnectPlayHub API is running',
+    timestamp: new Date().toISOString()
+  });
 });
 
-// Errors
+// Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);
-  res.status(500).json({ message: 'Internal server error', error: process.env.NODE_ENV === 'development' ? err.message : undefined });
+  res.status(500).json({
+    message: 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
 });
 
-// 404
+// 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
-// Start
+// Start server
 const PORT = process.env.PORT || 5000;
+
 const startServer = async () => {
   try {
+    // Initialize database
     const connection = await createDatabaseConnection();
     await initializeDatabase(connection);
 
@@ -268,7 +286,16 @@ const startServer = async () => {
     process.exit(1);
   }
 };
+
 startServer();
 
-process.on('SIGTERM', () => { console.log('SIGTERM received, shutting down gracefully'); process.exit(0); });
-process.on('SIGINT',  () => { console.log('SIGINT received, shutting down gracefully');  process.exit(0); });
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down gracefully');
+  process.exit(0);
+});
