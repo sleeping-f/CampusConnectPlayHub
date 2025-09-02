@@ -4,14 +4,29 @@ import { Toaster } from 'react-hot-toast';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AuthPage from './components/auth/AuthPage';
-import Dashboard from './components/dashboard/Dashboard';
+import Dashboard from './components/features/Dashboard';
+import AdminConsole from './components/features/AdminConsole'; // ⬅️ NEW
 import './App.css';
 
-// Protected Route Component
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? children : <Navigate to="/auth" replace />;
+// Role-aware guard
+const ProtectedRoute = ({ children, requiredRole }) => {
+  const { isAuthenticated, user } = useAuth();
+
+  if (!isAuthenticated) return <Navigate to="/auth" replace />;
+
+  if (requiredRole && user?.role !== requiredRole) {
+    // logged in but wrong role → send to main area
+    return <Navigate to="/features" replace />;
+  }
+  return children;
 };
+
+// If an admin tries to open /features, send them to /admin
+function DashboardGate() {
+  const { user } = useAuth();
+  if (user?.role === 'admin') return <Navigate to="/admin" replace />;
+  return <Dashboard />;
+}
 
 function App() {
   return (
@@ -30,16 +45,31 @@ function App() {
                 },
               }}
             />
+
             <Routes>
               <Route path="/auth" element={<AuthPage />} />
+
+              {/* student/regular dashboard */}
               <Route
-                path="/dashboard"
+                path="/features"
                 element={
                   <ProtectedRoute>
-                    <Dashboard />
+                    <DashboardGate />
                   </ProtectedRoute>
                 }
               />
+
+              {/* admin-only dashboard */}
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <AdminConsole />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* default */}
               <Route path="/" element={<Navigate to="/auth" replace />} />
             </Routes>
           </div>

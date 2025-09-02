@@ -1,22 +1,35 @@
 const express = require("express");
+const jwt = require("jsonwebtoken");
 const router = express.Router();
 
-// ✅ Submit a bug report
-router.post("/", async (req, res) => {
-  const { studentId, title, description, severity } = req.body;
+// Lightweight auth
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers["authorization"] || req.headers["Authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+  if (!token) return res.status(401).json({ message: "Access token required" });
+  jwt.verify(token, process.env.JWT_SECRET, (err, payload) => {
+    if (err) return res.status(403).json({ message: "Invalid or expired token" });
+    const id = payload.id ?? payload.userId ?? payload.sub;
+    if (!id) return res.status(400).json({ message: "Token payload missing user id" });
+    req.user = { id, role: payload.role, email: payload.email };
+    next();
+  });
+}
 
-  console.log("🐞 Incoming bug report:", { studentId, title, description, severity });
-
-  if (!title || !description) {
-    return res.status(400).json({ error: "Title and description are required" });
-  }
-
+// Submit bug (JWT -> user_id)
+router.post("/", authenticateToken, async (req, res) => {
   try {
-    const [result] = await req.db.execute(
-      `INSERT INTO bug_reports (studentId, title, description, severity) VALUES (?, ?, ?, ?)`,
-      [studentId || null, title, description, severity || "medium"]
-    );
+    const userId = req.user.id;
+    const { title, description, severity } = req.body;
+    if (!title || !description) {
+      return res.status(400).json({ error: "Title and description are required" });
+    }
 
+    await req.db.execute(
+      `INSERT INTO bug_reports (user_id, title, description, severity, status, created_at)
+       VALUES (?, ?, ?, ?, 'open', NOW())`,
+      [userId, title, description, severity || "medium"]
+    );
     res.json({ success: true, message: "Bug report submitted successfully!" });
   } catch (err) {
     console.error("❌ Bug report error:", err);
@@ -24,11 +37,15 @@ router.post("/", async (req, res) => {
   }
 });
 
-// ✅ Fetch all bug reports
-router.get("/", async (req, res) => {
+// List bugs
+router.get("/", authenticateToken, async (req, res) => {
   try {
     const [rows] = await req.db.execute(
-      "SELECT * FROM bugs ORDER BY created_at DESC"
+      `SELECT b.id, b.user_id, b.title, b.description, b.severity, b.status, b.created_at,
+              u.firstName, u.lastName, u.email
+       FROM bug_reports b
+       LEFT JOIN users u ON u.id = b.user_id
+       ORDER BY b.created_at DESC`
     );
     res.json(rows);
   } catch (err) {

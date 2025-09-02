@@ -167,9 +167,9 @@ A comprehensive campus social platform that connects students through food, gami
 CampusConnectPlayHub/
 ├── public/                 # Static files
 ├── src/
-│   ├── components/         # React components
+│   ├── components/        # React components
 │   │   ├── auth/          # Authentication components
-│   │   └── dashboard/     # Dashboard components
+│   │   └── features/      # Dashboard components
 │   ├── contexts/          # React contexts
 │   └── App.js             # Main app component
 ├── backend/

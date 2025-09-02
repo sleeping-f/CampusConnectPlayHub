@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { FiUser, FiMail, FiHash, FiBookOpen, FiEdit3, FiSave, FiX } from 'react-icons/fi';
 import axios from 'axios';
 import './StudentInfo.css';
-import GradientText from '../extra_designings/GradientText';
+import GradientText from '../common/GradientText';
 
 const StudentInfo = ({ user }) => {
   console.log('User data:', user);
@@ -252,7 +252,7 @@ const StudentInfo = ({ user }) => {
                       </div>
                       <div className="field-content">
                         <label>Student ID</label>
-                        <p>{user?.studentId || 'Not provided'}</p>
+                        <p>{user?.campus_id || 'Not provided'}</p>
                       </div>
                     </div>
 

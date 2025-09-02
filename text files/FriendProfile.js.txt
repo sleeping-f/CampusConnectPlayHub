@@ -18,7 +18,7 @@ const FriendProfile = ({ friend, onClose, onBack }) => {
     const fetchFriendRoutines = async () => {
         try {
             setIsLoadingRoutines(true);
-            const response = await axios.get(`/api/users/${friend.id}/routines`);
+            const response = await axios.get(`/api/routines/${friend.id}`);
             setRoutines(response.data.routines || []);
         } catch (error) {
             console.error('Error fetching friend routines:', error);
@@ -34,8 +34,7 @@ const FriendProfile = ({ friend, onClose, onBack }) => {
     const getRoleDisplay = (role) => {
         const roleMap = {
             student: 'Student',
-            faculty: 'Faculty',
-            staff: 'University Staff',
+            manager: 'Manager',
             admin: 'Administrator'
         };
         return roleMap[role] || role;

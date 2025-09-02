@@ -147,8 +147,8 @@ NODE_ENV=development
 
 To add new features to the friend finder:
 1. Update the backend routes in `backend/routes/users.js`
-2. Modify the frontend component in `src/components/dashboard/FriendFinder.js`
-3. Update styling in `src/components/dashboard/FriendFinder.css`
+2. Modify the frontend component in `src/components/features/FriendFinder.js`
+3. Update styling in `src/components/features/FriendFinder.css`
 4. Test thoroughly with different user scenarios
 
 ---
