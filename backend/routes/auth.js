@@ -12,13 +12,11 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({ message: 'Access token required' });
-  }
+  if (!token) return res.status(401).json({ message: 'Access token required' });
 
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
     if (err) {
+      console.error('JWT verify error:', err.name, err.message);
       return res.status(403).json({ message: 'Invalid or expired token' });
     }
     req.user = user;
@@ -32,9 +30,10 @@ const validateRegistration = [
   body('lastName').trim().isLength({ min: 2, max: 50 }).withMessage('Last name must be between 2 and 50 characters'),
   body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
-  body('role').isIn(['student', 'faculty', 'staff', 'admin']).withMessage('Invalid role'),
-  body('studentId').optional().trim().isLength({ min: 1 }).withMessage('Student ID is required for students'),
-  body('department').optional().trim().isLength({ min: 1 }).withMessage('Department is required for students')
+  body('campus_id').trim().isLength({ min: 8 }).withMessage('Campus ID must be required for users and must be at least 8 characters long'),
+  body('role').isIn(['student', 'manager', 'admin']).withMessage('Invalid role'),
+  // student-only requirements
+  body('department').if(body('role').equals('student')).trim().notEmpty().withMessage(' Department is required for students')
 ];
 
 const validateLogin = [
@@ -47,51 +46,90 @@ router.post('/register', validateRegistration, async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        message: 'Validation failed', 
-        errors: errors.array() 
+      return res.status(400).json({
+        message: 'Validation failed',
+        errors: errors.array()
       });
     }
 
-    const { firstName, lastName, email, password, studentId, department, role } = req.body;
+    let { firstName, lastName, email, password, campus_id, department, role } = req.body;
 
-    // Check if user already exists
-    const [existingUsers] = await req.db.execute(
+    // normalize inputs
+    role = (role || 'student').toLowerCase();
+    if (!['student', 'manager', 'admin'].includes(role)) {
+      return res.status(400).json({ message: 'Invalid role' });
+    }
+
+    // department only required for students
+    if (role === 'student') {
+      if (!department || !department.trim()) {
+        return res.status(400).json({ message: 'Department is required for students' });
+      }
+      department = department.trim();
+    }
+
+    // unique email check
+    const [email_rows] = await req.db.execute(
       'SELECT id FROM users WHERE email = ?',
       [email]
     );
-
-    if (existingUsers.length > 0) {
+    if (email_rows.length > 0) {
       return res.status(400).json({ message: 'User with this email already exists' });
     }
 
-    // Hash password
+    // unique campus_id check
+    const [campus_id_rows] = await req.db.execute(
+      'SELECT id FROM users WHERE campus_id = ?',
+      [campus_id]
+    );
+    if (campus_id_rows.length > 0) {
+      return res.status(400).json({ message: 'Campus ID must be unique for users' });
+    }
+
+    // hash password
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // Insert new user
+    // insert into users (NOTE: users table has NO department column)
     const [result] = await req.db.execute(
-      `INSERT INTO users (firstName, lastName, email, password, studentId, department, role) 
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [firstName, lastName, email, hashedPassword, studentId || null, department || null, role]
+      `INSERT INTO users (firstName, lastName, email, password, campus_id, role)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [firstName, lastName, email, hashedPassword, campus_id, role]
     );
 
-    // Get the created user (without password)
-    const [users] = await req.db.execute(
-      'SELECT id, firstName, lastName, email, studentId, department, role, createdAt FROM users WHERE id = ?',
+    // insert student row if needed (FK = numeric users.id)
+    if (role === 'student') {
+      await req.db.execute(
+        `INSERT INTO students (user_id, department) VALUES (?, ?)`,
+        [result.insertId, department]
+      );
+    }
+
+    // read back the joined user
+    const [[user]] = await req.db.execute(
+      `SELECT 
+         u.id,
+         u.firstName,
+         u.lastName,
+         u.email,
+         u.role,
+         u.campus_id,
+         s.department
+       FROM users u
+       LEFT JOIN students s ON s.user_id = u.id
+       WHERE u.id = ?`,
       [result.insertId]
     );
 
-    const user = users[0];
-
-    // Generate JWT token
+    // generate JWT with numeric id
     const token = jwt.sign(
-      { userId: user.id, email: user.email, role: user.role },
+      { id: user.id, role: user.role, email: user.email },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    res.status(201).json({
+    // single, final response (no unreachable code)
+    return res.status(201).json({
       message: 'User registered successfully',
       token,
       user: {
@@ -99,57 +137,71 @@ router.post('/register', validateRegistration, async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        studentId: user.studentId,
-        department: user.department,
+        campus_id: user.campus_id,
+        department: user.department ?? null,
         role: user.role
       }
     });
 
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ message: 'Registration failed' });
+    return res.status(500).json({ message: 'Registration failed' });
   }
 });
+
 
 // Login user
 router.post('/login', validateLogin, async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        message: 'Validation failed', 
-        errors: errors.array() 
+      return res.status(400).json({
+        message: 'Validation failed',
+        errors: errors.array()
       });
     }
 
     const { email, password } = req.body;
 
-    // Find user by email
-    const [users] = await req.db.execute(
-      'SELECT * FROM users WHERE email = ?',
+    // 1) Get user by email (NO joins; get password for comparison)
+    const [rows] = await req.db.execute(
+      `SELECT id, firstName, lastName, email, password, campus_id, role, createdAt
+       FROM users
+       WHERE email = ?`,
       [email]
     );
 
-    if (users.length === 0) {
+    if (rows.length === 0) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    const user = users[0];
+    const user = rows[0];
 
-    // Check password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
+    // 2) Verify password hash
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    // Generate JWT token
+    // 3) If student, fetch department from students table (NO join)
+    let department = null;
+    if (user.role === 'student') {
+      const [[deptRow]] = await req.db.execute(
+        `SELECT department FROM students WHERE user_id = ?`,
+        [user.id]
+      );
+      department = deptRow ? deptRow.department : null;
+    }
+
+    // 4) JWT
     const token = jwt.sign(
-      { userId: user.id, email: user.email, role: user.role },
+      { id: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    res.json({
+    // 5) Response (don’t include password)
+    return res.json({
       message: 'Login successful',
       token,
       user: {
@@ -157,28 +209,27 @@ router.post('/login', validateLogin, async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        studentId: user.studentId,
-        department: user.department,
+        campus_id: user.campus_id,
+        department,
         role: user.role
       }
     });
 
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ message: 'Login failed' });
+    return res.status(500).json({ message: 'Login failed' });
   }
 });
+
 
 // Google OAuth login
 router.post('/google', async (req, res) => {
   try {
     const { token } = req.body;
-
     if (!token) {
       return res.status(400).json({ message: 'Google token is required' });
     }
 
-    // Verify Google token
     const ticket = await googleClient.verifyIdToken({
       idToken: token,
       audience: process.env.GOOGLE_CLIENT_ID
@@ -196,7 +247,6 @@ router.post('/google', async (req, res) => {
     let user;
 
     if (existingUsers.length > 0) {
-      // User exists, update Google ID if needed
       user = existingUsers[0];
       if (!user.googleId) {
         await req.db.execute(
@@ -205,28 +255,38 @@ router.post('/google', async (req, res) => {
         );
       }
     } else {
-      // Create new user
+      // Create new user (6 columns → 6 values)
       const [result] = await req.db.execute(
-        `INSERT INTO users (firstName, lastName, email, password, googleId, role) 
-         VALUES (?, ?, ?, ?, ?, 'student')`,
-        [given_name, family_name, email, 'google_oauth', googleId]
+        `INSERT INTO users (firstName, lastName, email, password, campus_id, role, googleId)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [given_name, family_name, email, 'google_oauth', null, 'student', googleId]
       );
 
-      const [newUsers] = await req.db.execute(
+      const [[created]] = await req.db.execute(
         'SELECT * FROM users WHERE id = ?',
         [result.insertId]
       );
-      user = newUsers[0];
+      user = created;
     }
 
-    // Generate JWT token
+    // If the new/returning user is a student and has no students row yet, you may choose to create one later after collecting department.
+    // For now, just compute department if present:
+    let department = null;
+    if (user.role === 'student') {
+      const [[deptRow]] = await req.db.execute(
+        `SELECT department FROM students WHERE user_id = ?`,
+        [user.id]
+      );
+      department = deptRow ? deptRow.department : null;
+    }
+
     const jwtToken = jwt.sign(
-      { userId: user.id, email: user.email, role: user.role },
+      { id: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    res.json({
+    return res.json({
       message: 'Google login successful',
       token: jwtToken,
       user: {
@@ -234,37 +294,59 @@ router.post('/google', async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        studentId: user.studentId,
-        department: user.department,
+        campus_id: user.campus_id,
+        department,
         role: user.role
       }
     });
 
   } catch (error) {
     console.error('Google login error:', error);
-    res.status(500).json({ message: 'Google login failed' });
+    return res.status(500).json({ message: 'Google login failed' });
   }
 });
 
 // Get current user
 router.get('/me', authenticateToken, async (req, res) => {
   try {
-    const [users] = await req.db.execute(
-      'SELECT id, firstName, lastName, email, studentId, department, role, createdAt FROM users WHERE id = ?',
-      [req.user.userId]
+    // 1) Read from users only
+    const [[user]] = await req.db.execute(
+      `SELECT id, firstName, lastName, email, campus_id, role, createdAt
+       FROM users
+       WHERE id = ?`,
+      [req.user.id]  // <-- you were missing this comma before
     );
 
-    if (users.length === 0) {
+    if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.json({
-      user: users[0]
+    // 2) If student, pick department from students
+    let department = null;
+    if (user.role === 'student') {
+      const [[deptRow]] = await req.db.execute(
+        `SELECT department FROM students WHERE user_id = ?`,
+        [user.id]
+      );
+      department = deptRow ? deptRow.department : null;
+    }
+
+    return res.json({
+      user: {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        campus_id: user.campus_id,
+        department,
+        role: user.role,
+        createdAt: user.createdAt
+      }
     });
 
   } catch (error) {
     console.error('Get user error:', error);
-    res.status(500).json({ message: 'Failed to get user data' });
+    return res.status(500).json({ message: 'Failed to get user data' });
   }
 });
 
@@ -287,7 +369,7 @@ router.post('/change-password', authenticateToken, [
     // Get current user with password
     const [users] = await req.db.execute(
       'SELECT password FROM users WHERE id = ?',
-      [req.user.userId]
+      [req.user.id]
     );
 
     if (users.length === 0) {
@@ -307,7 +389,7 @@ router.post('/change-password', authenticateToken, [
     // Update password
     await req.db.execute(
       'UPDATE users SET password = ? WHERE id = ?',
-      [hashedNewPassword, req.user.userId]
+      [hashedNewPassword, req.user.id]
     );
 
     res.json({ message: 'Password changed successfully' });

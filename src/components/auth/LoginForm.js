@@ -31,7 +31,7 @@ const LoginForm = () => {
 
     const result = await login(formData);
     if (result.success) {
-      navigate('/dashboard');
+      navigate('/features');
     }
     setLoading(false);
   };
@@ -41,7 +41,7 @@ const LoginForm = () => {
     try {
       const result = await googleLogin(credentialResponse.credential);
       if (result.success) {
-        navigate('/dashboard');
+        navigate('/features');
       }
     } catch (error) {
       toast.error('Google Sign-In failed');

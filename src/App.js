@@ -4,7 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AuthPage from './components/auth/AuthPage';
-import Dashboard from './components/dashboard/Dashboard';
+import Dashboard from './components/features/Dashboard';
 import './App.css';
 
 // Protected Route Component
@@ -33,7 +33,7 @@ function App() {
             <Routes>
               <Route path="/auth" element={<AuthPage />} />
               <Route
-                path="/dashboard"
+                path="/features"
                 element={
                   <ProtectedRoute>
                     <Dashboard />

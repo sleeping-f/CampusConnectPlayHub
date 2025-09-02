@@ -200,6 +200,7 @@
 }
 
 .user-card {
+    max-width: 100%;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 1rem;
     padding: 1.5rem;
@@ -226,6 +227,7 @@
 }
 
 .user-avatar {
+    flex-shrink: 0;
     text-align: center;
     margin-bottom: 1rem;
 }
@@ -254,32 +256,33 @@
 
 .user-info {
     text-align: center;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
 .user-info h4 {
-    color: #1f2937;
-    font-size: 1.25rem;
+    color: #ffffff;
+    margin: 0 0 0.5rem 0;
+    font-size: 1.2rem;
     font-weight: 600;
-    margin: 0 0 0.5rem 0;
 }
 
-.user-email {
-    color: #6b7280;
-    margin: 0 0 0.5rem 0;
-    font-size: 0.9rem;
-}
-
-.user-student-id,
+.user-email,
 .user-department {
     color: #9ca3af;
-    margin: 0.25rem 0;
+    margin: 0.1rem 0;
     font-size: 0.85rem;
+}
+
+.user-student-id {
+    color: #667eea;
+    margin: 0.1rem 0;
+    font-size: 0.85rem;
+    font-weight: 500;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.25rem;
-}
+  }
 
 .add-friend-btn {
     width: 100%;
@@ -335,6 +338,7 @@
 }
 
 .friend-card {
+    max-width: 100%;
     background: rgba(255, 255, 255, 0.05);
     border-radius: 1rem;
     padding: 1.5rem;
@@ -356,6 +360,8 @@
 
 .friend-avatar {
     flex-shrink: 0;
+    text-align: center;
+    margin-bottom: 0rem;
 }
 
 .friend-avatar img,
@@ -379,8 +385,8 @@
 
 .friend-info h4 {
     color: #ffffff;
-    margin: 0 0 0.25rem 0;
-    font-size: 1.1rem;
+    margin: 0 0 0.5rem 0;
+    font-size: 1.2rem;
     font-weight: 600;
 }
 
@@ -441,7 +447,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 4px 15px rgba(102, 26, 234, 0.3);
 }
 
 .view-profile-btn:hover {
@@ -461,17 +467,22 @@
 
 .requests-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    grid-template-columns: 1fr;
     gap: 1.5rem;
 }
 
 .request-card {
+    max-width: 100%;
     background: rgba(255, 255, 255, 0.05);
     border-radius: 1rem;
     padding: 1.5rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
     transition: all 0.3s ease;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
 }
 
 .request-card:hover {
@@ -482,8 +493,9 @@
 }
 
 .request-avatar {
+    flex-shrink: 0;
     text-align: center;
-    margin-bottom: 1rem;
+    margin-bottom: 0rem;
 }
 
 .request-avatar img,
@@ -502,8 +514,7 @@
 }
 
 .request-info {
-    text-align: center;
-    margin-bottom: 1.5rem;
+    flex: 1;
 }
 
 .request-info h4 {
@@ -516,18 +527,17 @@
 .request-email,
 .request-department {
     color: #9ca3af;
-    margin: 0.25rem 0;
-    font-size: 0.9rem;
+    margin: 0.1rem 0;
+    font-size: 0.85rem;
 }
 
 .request-student-id {
     color: #667eea;
-    margin: 0.25rem 0;
-    font-size: 0.9rem;
+    margin: 0.1rem 0;
+    font-size: 0.85rem;
     font-weight: 500;
     display: flex;
     align-items: center;
-    justify-content: center;
     gap: 0.25rem;
 }
 
@@ -537,7 +547,7 @@
 }
 
 .accept-btn,
-.reject-btn {
+.decline-btn {
     flex: 1;
     padding: 0.75rem;
     border: none;
@@ -561,12 +571,12 @@
     box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
 }
 
-.reject-btn {
+.decline-btn {
     background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
     color: white;
 }
 
-.reject-btn:hover {
+.decline-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
 }

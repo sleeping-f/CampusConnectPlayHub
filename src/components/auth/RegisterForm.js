@@ -15,9 +15,9 @@ const RegisterForm = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    studentId: '',
+    campus_id: '',
     department: '',
-    role: 'student',
+    role: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -48,10 +48,15 @@ const RegisterForm = () => {
     'Other'
   ];
 
+  const roleIdLabel = (role) => {
+    if (role === 'admin')   return 'Admin ID';
+    if (role === 'manager') return 'Manager ID';
+    return 'Student ID';
+  };
+
   const roles = [
     { value: 'student', label: 'Student' },
-    { value: 'faculty', label: 'Faculty' },
-    { value: 'staff', label: 'University Staff' },
+    { value: 'manager', label: 'Manager' },
     { value: 'admin', label: 'Administrator' }
   ];
 
@@ -69,8 +74,8 @@ const RegisterForm = () => {
     if (formData.password.length < 6) {
       return 'Password must be at least 6 characters long';
     }
-    if (!formData.studentId && formData.role === 'student') {
-      return 'Student ID is required';
+    if (!formData.campus_id) {
+      return 'ID is required';
     }
     return null;
   };
@@ -87,7 +92,7 @@ const RegisterForm = () => {
     setLoading(true);
     const result = await register(formData);
     if (result.success) {
-      navigate('/dashboard');
+      navigate('/features');
     }
     setLoading(false);
   };
@@ -97,7 +102,7 @@ const RegisterForm = () => {
     try {
       const result = await googleLogin(credentialResponse.credential);
       if (result.success) {
-        navigate('/dashboard');
+        navigate('/features');
       }
     } catch (error) {
       toast.error('Google Sign-In failed');
@@ -176,27 +181,31 @@ const RegisterForm = () => {
             onChange={handleChange}
             className="form-input"
             required
+            aria-label="Select user role"
           >
-            {roles.map(role => (
-              <option key={role.value} value={role.value}>
-                {role.label}
-              </option>
-            ))}
+          <option value="" disabled hidden>User</option>
+            <optgroup label="User">
+              {roles.map(role => (
+                <option key={role.value} value={role.value}>
+                  {role.label}
+                </option>
+              ))}
+            </optgroup>
           </select>
         </div>
       </div>
 
-      {/* Student ID (if student) */}
-      {formData.role === 'student' && (
+      {/* ID field (shown when a valid role is chosen) */}
+      {formData.role && (
         <div className="form-group-signup">
           <div className="input-wrapper">
             <FiHash className="input-icon" />
             <input
               type="text"
-              name="studentId"
-              placeholder="Student ID"
-              value={formData.studentId}
+              name="campus_id"
+              value={formData.campus_id}
               onChange={handleChange}
+              placeholder={`Enter your ${roleIdLabel(formData.role || 'student')}`}
               required
               className="form-input"
             />

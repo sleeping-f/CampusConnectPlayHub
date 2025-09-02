@@ -1,19 +1,17 @@
 const express = require('express');
-const { body, validationResult } = require('express-validator');
+const jwt = require('jsonwebtoken');
+const { body, query, validationResult } = require('express-validator');
 const router = express.Router();
 
-// Middleware to verify JWT token
+ // Auth middleware (you shared this snippet)
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return res.status(401).json({ message: 'Access token required' });
 
-  if (!token) {
-    return res.status(401).json({ message: 'Access token required' });
-  }
-
-  const jwt = require('jsonwebtoken');
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
     if (err) {
+      console.error('JWT verify error:', err.name, err.message);
       return res.status(403).json({ message: 'Invalid or expired token' });
     }
     req.user = user;
@@ -21,399 +19,230 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Get user profile
-router.get('/profile', authenticateToken, async (req, res) => {
-  try {
-    const [users] = await req.db.execute(
-      `SELECT id, firstName, lastName, email, studentId, department, role, 
-              profileImage, createdAt, updatedAt 
-       FROM users WHERE id = ?`,
-      [req.user.userId]
-    );
-
-    if (users.length === 0) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    res.json({ user: users[0] });
-
-  } catch (error) {
-    console.error('Get profile error:', error);
-    res.status(500).json({ message: 'Failed to get profile' });
+/**
+ * Utility: standard error formatter
+ */
+function sendValidationErrors(req, res) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
   }
-});
+  return null;
+}
 
-// Update user profile
-router.put('/profile', authenticateToken, [
-  body('firstName').optional().trim().isLength({ min: 2, max: 50 }).withMessage('First name must be between 2 and 50 characters'),
-  body('lastName').optional().trim().isLength({ min: 2, max: 50 }).withMessage('Last name must be between 2 and 50 characters'),
-  body('studentId').optional().trim().isLength({ min: 1 }).withMessage('Student ID cannot be empty'),
-  body('department').optional().trim().isLength({ min: 1 }).withMessage('Department cannot be empty')
-], async (req, res) => {
-  try {
+/**
+ * Shape a unified profile payload from joined rows.
+ */
+function shapeProfile(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    campus_id: row.campus_id, // alias for convenience
+    firstName: row.firstName,
+    lastName: row.lastName,
+    email: row.email,
+    role: row.role,
+    department: row.department ?? null,
+    createdAt: row.createdAt ?? null,
+    updatedAt: row.updatedAt ?? null,
+  };
+}
+
+/**
+ * GET /api/users/me
+ * Return the authenticated user's profile (JOIN users ⟷ students)
+ */
+router.get(
+  '/me',
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const id = req.user.id;
+      const [rows] = await req.db.execute(
+        `
+        SELECT u.id, u.firstName, u.lastName, u.email, u.role, u.campus_id, u.createdAt, u.updatedAt,
+               s.department
+        FROM users u, students s
+        WHERE s.user_id = u.id
+        AND u.id = ?
+        `,
+        [id]
+      );
+      if (rows.length === 0) return res.status(404).json({ message: 'User not found' });
+      return res.json({ profile: shapeProfile(rows[0]) });
+    } catch (err) {
+      console.error('GET /users/me error:', err);
+      return res.status(500).json({ message: 'Internal server error' });
+    }
+  }
+);
+
+router.get(
+  '/search',
+  authenticateToken,
+  [
+    query('q').trim().isLength({ min: 1 }).withMessage('q is required'),
+    query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
+    query('offset').optional().isInt({ min: 0 }).toInt(),
+  ],
+  async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({
-        message: 'Validation failed',
-        errors: errors.array()
-      });
+      return res.status(400).json({ message: 'Invalid query', errors: errors.array() });
     }
 
-    const { firstName, lastName, studentId, department } = req.body;
+    try {
+      const q = req.query.q;
+      const like = `%${q}%`;
+      //const limit = req.query.limit || 20;
+      //const offset = req.query.offset || 0;
 
-    // Build update query dynamically
-    const updates = [];
-    const values = [];
+      // Students only, implicit join form you requested
+      const [rows] = await req.db.execute(
+        `
+        SELECT
+          u.id, u.firstName, u.lastName, u.email, u.campus_id, u.role, u.createdAt,
+          s.department
+        FROM users u, students s
+        WHERE u.id = s.user_id
+          AND (
+            u.firstName LIKE ?
+            OR u.lastName LIKE ?
+            OR u.email LIKE ?
+            OR u.campus_id LIKE ?
+          )
+        ORDER BY u.firstName, u.lastName
+        `,
+        [like, like, like, like]
+      );
 
-    if (firstName !== undefined) {
-      updates.push('firstName = ?');
-      values.push(firstName);
+      return res.json({ rows });
+    } catch (err) {
+      console.error('GET /api/users/search error:', err);
+      return res.status(500).json({ message: 'Search failed' });
     }
-    if (lastName !== undefined) {
-      updates.push('lastName = ?');
-      values.push(lastName);
-    }
-    if (studentId !== undefined) {
-      updates.push('studentId = ?');
-      values.push(studentId);
-    }
-    if (department !== undefined) {
-      updates.push('department = ?');
-      values.push(department);
-    }
-
-    if (updates.length === 0) {
-      return res.status(400).json({ message: 'No fields to update' });
-    }
-
-    values.push(req.user.userId);
-
-    await req.db.execute(
-      `UPDATE users SET ${updates.join(', ')}, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`,
-      values
-    );
-
-    // Get updated user
-    const [users] = await req.db.execute(
-      `SELECT id, firstName, lastName, email, studentId, department, role, 
-              profileImage, createdAt, updatedAt 
-       FROM users WHERE id = ?`,
-      [req.user.userId]
-    );
-
-    res.json({
-      message: 'Profile updated successfully',
-      user: users[0]
-    });
-
-  } catch (error) {
-    console.error('Update profile error:', error);
-    res.status(500).json({ message: 'Failed to update profile' });
   }
-});
+);
 
-// Search users
-router.get('/search', authenticateToken, async (req, res) => {
-  try {
-    const { q, department, role } = req.query;
-    const limit = parseInt(req.query.limit) || 20;
-    const offset = parseInt(req.query.offset) || 0;
+/**
+ * PATCH /api/users/me
+ * Dynamic UPDATE for users table only (firstName, lastName, email).
+ * Upsert department in students if provided AND user.role === 'student'.
+ * - If nothing to update on users AND no department change, bail early (400).
+ * - Always return the updated profile via JOIN.
+ */
+router.patch(
+  '/me',
+  authenticateToken,
+  // validate optional fields
+  body('firstName').optional().isString().isLength({ min: 1, max: 100 }),
+  body('lastName').optional().isString().isLength({ min: 1, max: 100 }),
+  body('email').optional().isEmail().isLength({ max: 255 }),
+  body('department').optional().isString().isLength({ min: 1, max: 100 }),
+  async (req, res) => {
+    if (sendValidationErrors(req, res)) return;
 
-    let query = `
-      SELECT id, firstName, lastName, email, studentId, department, role, profileImage
-      FROM users 
-      WHERE id != ?
-    `;
-    const values = [req.user.userId];
+    const id = req.user.id;
+    const { firstName, lastName, email, department } = req.body ?? {};
 
-    // Add search conditions
-    if (q) {
-      query += ` AND (firstName LIKE ? OR lastName LIKE ? OR email LIKE ? OR studentId LIKE ?)`;
-      const searchTerm = `%${q}%`;
-      values.push(searchTerm, searchTerm, searchTerm, searchTerm);
+    try {
+      // Fetch current role to decide if we can touch students
+      const [[current]] = await req.db.execute(
+        `SELECT id, role FROM users WHERE id = ?`,
+        [id]
+      );
+      if (!current) return res.status(404).json({ message: 'User not found' });
+
+      // Build dynamic UPDATE for users table
+      const setParts = [];
+      const params = [];
+
+      if (typeof firstName !== 'undefined') {
+        setParts.push('firstName = ?');
+        params.push(firstName);
+      }
+      if (typeof lastName !== 'undefined') {
+        setParts.push('lastName = ?');
+        params.push(lastName);
+      }
+      if (typeof email !== 'undefined') {
+        setParts.push('email = ?');
+        params.push(email);
+      }
+
+      const willUpdateUsers = setParts.length > 0;
+      const wantsDeptChange = typeof department !== 'undefined';
+
+      // Bail early if nothing to do
+      if (!willUpdateUsers && !wantsDeptChange) {
+        return res.status(400).json({ message: 'Nothing to update' });
+      }
+
+      // Begin transaction to keep things consistent
+      await req.db.beginTransaction();
+      try {
+        // Update users if needed
+        if (willUpdateUsers) {
+          const sql = `UPDATE users SET ${setParts.join(', ')} WHERE id = ?`;
+          params.push(id);
+          await req.db.execute(sql, params);
+        }
+
+        // Upsert department into students if provided AND role === 'student'
+        if (wantsDeptChange) {
+          if (current.role !== 'student') {
+            // Do NOT create a students row if not a student
+            // Silently ignore department if user isn’t a student
+          } else {
+            // Check if students row exists
+            const [sRows] = await req.db.execute(
+              `SELECT user_id FROM students WHERE user_id = ?`,
+              [id]
+            );
+            if (sRows.length === 0) {
+              // Create students row if department provided and user is actually a student
+              await req.db.execute(
+                `INSERT INTO students (user_id, department) VALUES (?, ?)`,
+                [id, department]
+              );
+            } else {
+              // Update existing row
+              await req.db.execute(
+                `UPDATE students SET department = ? WHERE user_id = ?`,
+                [department, id]
+              );
+            }
+          }
+        }
+
+        await req.db.commit();
+      } catch (txErr) {
+        await req.db.rollback();
+        throw txErr;
+      }
+
+      // Return updated profile via JOIN
+      const [rows] = await req.db.execute(
+        `
+        SELECT u.id, u.firstName, u.lastName, u.email, u.role, u.createdAt, u.updatedAt,
+               s.department
+        FROM users u, students s
+        WHERE s.user_id = u.id
+        AND u.id = ?
+        `,
+        [id]
+      );
+      if (rows.length === 0) return res.status(404).json({ message: 'User not found after update' });
+      return res.json({ profile: shapeProfile(rows[0]) });
+    } catch (err) {
+      // Handle possible duplicate email error
+      if (err && err.code === 'ER_DUP_ENTRY') {
+        return res.status(409).json({ message: 'Email already in use' });
+      }
+      console.error('PATCH /users/me error:', err);
+      return res.status(500).json({ message: 'Internal server error' });
     }
-
-    if (department) {
-      query += ` AND department = ?`;
-      values.push(department);
-    }
-
-    if (role) {
-      query += ` AND role = ?`;
-      values.push(role);
-    }
-
-    query += ` ORDER BY firstName, lastName LIMIT ? OFFSET ?`;
-    values.push(limit, offset);
-
-    const [users] = await req.db.execute(query, values);
-
-    res.json({ users });
-
-  } catch (error) {
-    console.error('Search users error:', error);
-    res.status(500).json({ message: 'Failed to search users' });
   }
-});
-
-// Send friend request
-router.post('/friends/request', authenticateToken, [
-  body('friendId').isInt().withMessage('Valid friend ID is required')
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        message: 'Validation failed',
-        errors: errors.array()
-      });
-    }
-
-    const { friendId } = req.body;
-
-    // Check if friend exists
-    const [friends] = await req.db.execute(
-      'SELECT id FROM users WHERE id = ?',
-      [friendId]
-    );
-
-    if (friends.length === 0) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    // Check if already friends or request pending
-    const [existingRequests] = await req.db.execute(
-      'SELECT * FROM friends WHERE (userId = ? AND friendId = ?) OR (userId = ? AND friendId = ?)',
-      [req.user.userId, friendId, friendId, req.user.userId]
-    );
-
-    if (existingRequests.length > 0) {
-      return res.status(400).json({ message: 'Friend request already exists' });
-    }
-
-    // Create friend request
-    await req.db.execute(
-      'INSERT INTO friends (userId, friendId, status) VALUES (?, ?, "pending")',
-      [req.user.userId, friendId]
-    );
-
-    // Create notification for friend
-    await req.db.execute(
-      `INSERT INTO notifications (userId, title, message, type) 
-       VALUES (?, ?, ?, "friend_request")`,
-      [
-        friendId,
-        'New Friend Request',
-        `You have a new friend request from ${req.user.firstName || 'a user'}`,
-      ]
-    );
-
-    res.json({ message: 'Friend request sent successfully' });
-
-  } catch (error) {
-    console.error('Send friend request error:', error);
-    res.status(500).json({ message: 'Failed to send friend request' });
-  }
-});
-
-// Accept/Reject friend request
-router.put('/friends/respond', authenticateToken, [
-  body('friendId').isInt().withMessage('Valid friend ID is required'),
-  body('action').isIn(['accept', 'reject']).withMessage('Action must be accept or reject')
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        message: 'Validation failed',
-        errors: errors.array()
-      });
-    }
-
-    const { friendId, action } = req.body;
-
-    // Update friend request status
-    const [result] = await req.db.execute(
-      'UPDATE friends SET status = ? WHERE userId = ? AND friendId = ? AND status = "pending"',
-      [action === 'accept' ? 'accepted' : 'rejected', friendId, req.user.userId]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Friend request not found' });
-    }
-
-    // Create notification for the requester
-    const [requester] = await req.db.execute(
-      'SELECT firstName FROM users WHERE id = ?',
-      [friendId]
-    );
-
-    await req.db.execute(
-      `INSERT INTO notifications (userId, title, message, type) 
-       VALUES (?, ?, ?, "friend_request")`,
-      [
-        friendId,
-        'Friend Request Response',
-        `Your friend request was ${action}ed by ${req.user.firstName || 'a user'}`,
-      ]
-    );
-
-    res.json({ message: `Friend request ${action}ed successfully` });
-
-  } catch (error) {
-    console.error('Respond to friend request error:', error);
-    res.status(500).json({ message: 'Failed to respond to friend request' });
-  }
-});
-
-// Get friends list
-router.get('/friends', authenticateToken, async (req, res) => {
-  try {
-    const [friends] = await req.db.execute(
-      `SELECT u.id, u.firstName, u.lastName, u.email, u.studentId, u.department, u.role, u.profileImage, f.status, f.createdAt
-       FROM friends f
-       JOIN users u ON (f.userId = u.id OR f.friendId = u.id)
-       WHERE (f.userId = ? OR f.friendId = ?) AND u.id != ? AND f.status = 'accepted'
-       ORDER BY u.firstName, u.lastName`,
-      [req.user.userId, req.user.userId, req.user.userId]
-    );
-
-    res.json({ friends });
-
-  } catch (error) {
-    console.error('Get friends error:', error);
-    res.status(500).json({ message: 'Failed to get friends' });
-  }
-});
-
-// Get pending friend requests
-router.get('/friends/pending', authenticateToken, async (req, res) => {
-  try {
-    const [requests] = await req.db.execute(
-      `SELECT u.id, u.firstName, u.lastName, u.email, u.studentId, u.department, u.role, u.profileImage, f.createdAt
-       FROM friends f
-       JOIN users u ON f.userId = u.id
-       WHERE f.friendId = ? AND f.status = 'pending'
-       ORDER BY f.createdAt DESC`,
-      [req.user.userId]
-    );
-
-    res.json({ requests });
-
-  } catch (error) {
-    console.error('Get pending requests error:', error);
-    res.status(500).json({ message: 'Failed to get pending requests' });
-  }
-});
-
-// Remove friend
-router.delete('/friends/:friendId', authenticateToken, async (req, res) => {
-  try {
-    const { friendId } = req.params;
-
-    // Remove friendship (both directions)
-    await req.db.execute(
-      'DELETE FROM friends WHERE (userId = ? AND friendId = ?) OR (userId = ? AND friendId = ?)',
-      [req.user.userId, friendId, friendId, req.user.userId]
-    );
-
-    res.json({ message: 'Friend removed successfully' });
-
-  } catch (error) {
-    console.error('Remove friend error:', error);
-    res.status(500).json({ message: 'Failed to remove friend' });
-  }
-});
-
-// Get notifications
-router.get('/notifications', authenticateToken, async (req, res) => {
-  try {
-    const limit = parseInt(req.query.limit) || 20;
-    const offset = parseInt(req.query.offset) || 0;
-
-    const [notifications] = await req.db.execute(
-      `SELECT id, title, message, type, isRead, createdAt
-       FROM notifications 
-       WHERE userId = ?
-       ORDER BY createdAt DESC
-       LIMIT ? OFFSET ?`,
-      [req.user.userId, limit, offset]
-    );
-
-    res.json({ notifications });
-
-  } catch (error) {
-    console.error('Get notifications error:', error);
-    res.status(500).json({ message: 'Failed to get notifications' });
-  }
-});
-
-// Mark notification as read
-router.put('/notifications/:id/read', authenticateToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    await req.db.execute(
-      'UPDATE notifications SET isRead = TRUE WHERE id = ? AND userId = ?',
-      [id, req.user.userId]
-    );
-
-    res.json({ message: 'Notification marked as read' });
-
-  } catch (error) {
-    console.error('Mark notification read error:', error);
-    res.status(500).json({ message: 'Failed to mark notification as read' });
-  }
-});
-
-// Mark all notifications as read
-router.put('/notifications/read-all', authenticateToken, async (req, res) => {
-  try {
-    await req.db.execute(
-      'UPDATE notifications SET isRead = TRUE WHERE userId = ?',
-      [req.user.userId]
-    );
-
-    res.json({ message: 'All notifications marked as read' });
-
-  } catch (error) {
-    console.error('Mark all notifications read error:', error);
-    res.status(500).json({ message: 'Failed to mark notifications as read' });
-  }
-});
-
-// Get routines for a specific user (friend)
-router.get('/:userId/routines', authenticateToken, async (req, res) => {
-  try {
-    const { userId } = req.params;
-
-    // Check if the user is a friend
-    const [friendship] = await req.db.execute(
-      `SELECT id FROM friends 
-       WHERE ((userId = ? AND friendId = ?) OR (userId = ? AND friendId = ?)) 
-       AND status = 'accepted'`,
-      [req.user.userId, userId, userId, req.user.userId]
-    );
-
-    if (friendship.length === 0) {
-      return res.status(403).json({ message: 'Access denied. User is not your friend.' });
-    }
-
-    // Get user's routines
-    const [routines] = await req.db.execute(
-      `SELECT id, day, startTime, endTime, activity, location, type, createdAt, updatedAt
-       FROM routines 
-       WHERE userId = ?
-       ORDER BY day, startTime`,
-      [userId]
-    );
-
-    res.json({ routines });
-
-  } catch (error) {
-    console.error('Get user routines error:', error);
-    res.status(500).json({ message: 'Failed to get user routines' });
-  }
-});
+);
 
 module.exports = router;
