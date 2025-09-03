@@ -98,9 +98,9 @@ router.post('/request', requireDb, authenticateToken, async (req, res) => {
     // Upsert this directional edge to pending
     // Assumes a unique key on (student_id_1, student_id_2)
     await req.db.execute(
-      `INSERT INTO friends (student_id_1, student_id_2, status, dateAdded)
+      `INSERT INTO friends (student_id_1, student_id_2, status, date_added)
        VALUES (?, ?, 'pending', NULL)
-       ON DUPLICATE KEY UPDATE status='pending', dateAdded=NULL`,
+       ON DUPLICATE KEY UPDATE status='pending', date_added=NULL`,
       [student_id_1, student_id_2]
     );
 
@@ -158,7 +158,7 @@ router.put('/respond', requireDb, authenticateToken, async (req, res) => {
 
       if (action === 'accept') {
         await req.db.execute(
-          `UPDATE friends SET status = 'accepted', dateAdded = NOW()
+          `UPDATE friends SET status = 'accepted', date_added = NOW()
            WHERE student_id_1 = ? AND student_id_2 = ? AND status = 'pending'`,
           [incoming_sender_id, me]
         );
@@ -221,7 +221,7 @@ router.get('/', requireDb, authenticateToken, async (req, res) => {
     const me = Number(req.user.id);
     const [rows] = await req.db.execute(
       `
-      SELECT u.id, u.firstName, u.lastName, u.email, u.campus_id, s.department, f.dateAdded
+      SELECT u.id, u.firstName, u.lastName, u.email, u.campus_id, s.department, f.date_added
       FROM users u, students s, friends f
       WHERE u.id = s.user_id
         AND (
@@ -233,7 +233,7 @@ router.get('/', requireDb, authenticateToken, async (req, res) => {
       `,
       [me, me]
     );
-    const friends = rows.map(r => ({ friend: shapeUser(r), since: r.dateAdded || null }));
+    const friends = rows.map(r => ({ friend: shapeUser(r), since: r.date_added || null }));
     return res.json({ friends });
   } catch (err) {
     console.error('GET /friends:', err);
