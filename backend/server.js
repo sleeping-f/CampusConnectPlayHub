@@ -133,7 +133,7 @@ const initializeDatabase = async (connection) => {
         student_id_1 INT NOT NULL,
         student_id_2 INT NOT NULL,
         status ENUM('pending','accepted','rejected') DEFAULT 'pending',
-        dateAdded TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (student_id_1, student_id_2),
         CONSTRAINT friends_ordered CHECK (student_id_1 <> student_id_2),
         CONSTRAINT fk_student1 FOREIGN KEY (student_id_1) REFERENCES users(id) ON DELETE CASCADE,
