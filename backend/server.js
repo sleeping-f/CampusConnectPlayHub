@@ -15,8 +15,8 @@ const routineRoutes = require('./routes/routines');
 const friendsRoutes = require('./routes/friends');
 const feedbackRoutes = require('./routes/feedback');
 const bugRoutes = require('./routes/bugs');
-const studyGroupsRoutes = require('./routes/study_groups');
-const studyGroupMembershipsRoutes = require('./routes/study_groups_memberships');
+const studyGroupsRoutes = require("./routes/study-groups");
+const membershipsRoutes = require('./routes/memberships');
 const adminRoutes = require('./routes/admin');
 
 const app = express();
@@ -143,23 +143,22 @@ const initializeDatabase = async (connection) => {
 
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS study_groups (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        group_id INT AUTO_INCREMENT PRIMARY KEY,
         group_name VARCHAR(100) NOT NULL,
         description TEXT,
         creator_id INT NOT NULL,
         date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT fk_sg_creator FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE
+        CONSTRAINT fk_sg_creator FOREIGN KEY (creator_id) REFERENCES students(user_id) ON DELETE CASCADE
       );
     `);
     await connection.execute(`
-      CREATE TABLE IF NOT EXISTS study_group_memberships (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        group_id INT NOT NULL,
+      CREATE TABLE IF NOT EXISTS memberships (
+        sgroup_id INT NOT NULL,
         student_id INT NOT NULL,
-        role ENUM('member','owner') DEFAULT 'member',
+        role ENUM('member','creator') DEFAULT 'member',
         date_joined TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT fk_sgm_group FOREIGN KEY (group_id) REFERENCES study_groups(id) ON DELETE CASCADE,
-        CONSTRAINT fk_sgm_student FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
+        CONSTRAINT fk_sgm_group FOREIGN KEY (sgroup_id) REFERENCES study_groups(group_id) ON DELETE CASCADE,
+        CONSTRAINT fk_sgm_student FOREIGN KEY (student_id) REFERENCES students(user_id) ON DELETE CASCADE
       );
     `);
 
@@ -230,8 +229,8 @@ app.use('/api/routines', routineRoutes);
 app.use('/api/friends', friendsRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/bugs', bugRoutes);
-app.use('/api/study_groups', studyGroupsRoutes);
-app.use('/api/study_groups_memberships', studyGroupMembershipsRoutes);
+app.use('/api/study-groups', studyGroupsRoutes);
+app.use('/api/memberships', membershipsRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Health
