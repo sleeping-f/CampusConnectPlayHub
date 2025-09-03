@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { FiUser, FiMail, FiHash, FiBookOpen, FiCalendar, FiClock, FiX, FiArrowLeft } from 'react-icons/fi';
 import axios from 'axios';
 import './FriendProfile.css';
