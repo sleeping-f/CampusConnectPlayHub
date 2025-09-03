@@ -107,18 +107,6 @@ const FriendFinder = () => {
     fetchPendingRequests();
   }, [user, fetchFriends, fetchPendingRequests]);
 
-<<<<<<< HEAD
-  // 🔒 Block non-students
-  if (!user || user.role !== 'student') {
-    return (
-      <div className="friend-finder-disabled">
-        <p> Only students can use the Friends feature.</p>
-      </div>
-    );
-  }
-
-=======
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
   const handleSearch = async () => {
     const q = (searchQuery || '').trim();
     if (!q) {
@@ -231,8 +219,6 @@ const FriendFinder = () => {
   const getInitials = (firstName, lastName) =>
     `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
 
-<<<<<<< HEAD
-=======
   // 🔒 Block non-students
   if (!user || user.role !== 'student') {
     return (
@@ -242,7 +228,6 @@ const FriendFinder = () => {
     );
   }
 
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
   return (
     <div className="friend-finder">
       <div className="friend-finder-header">
@@ -457,11 +442,7 @@ const FriendFinder = () => {
                     <FiCheck /> Accept
                 </button>
                 <button
-<<<<<<< HEAD
-                    className="reject-btn"
-=======
                     className="decline-btn"
->>>>>>> 623e25949a0e01a86298b67241a4852ee060a231
                     onClick={() => respondToFriendRequest(p.id, 'decline')}
                 >
                     <FiX /> Decline
