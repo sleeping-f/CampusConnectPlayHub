@@ -28,6 +28,12 @@ function DashboardGate() {
   return <Dashboard />;
 }
 
+// function DashboardGate(){
+//   const{user}=useAuth();
+//   if (user?.role==='manager') return <Navigate to ="/manager" replace />;
+//   return <Dashboarad />;
+// }
+
 function App() {
   return (
     <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID}>

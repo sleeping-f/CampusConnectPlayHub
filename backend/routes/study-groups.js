@@ -39,18 +39,18 @@ router.post('/',
     const { name, description } = req.body;
     try {
       const [result] = await req.db.execute(
-        `INSERT INTO study_groups (name, description, creatorId) VALUES (?, ?, ?)`,
-        [name, description || null, req.user.userId]
+        `INSERT INTO study_groups (group_name, description, creator_id) VALUES (?, ?, ?)`,
+        [name, description || null, req.user.id]
       );
 
-      // auto-add creator as owner
+      // auto-add creator as creator
       await req.db.execute(
-        `INSERT INTO study_group_members (groupId, userId, role) VALUES (?, ?, 'owner')`,
-        [result.insertId, req.user.userId]
+        `INSERT INTO memberships (sgroup_id, student_id, role) VALUES (?, ?, 'creator')`,
+        [result.insertId, req.user.id]
       );
 
       const [rows] = await req.db.execute(
-        `SELECT g.*, 'owner' AS myRole FROM study_groups g WHERE g.id = ?`,
+        `SELECT g.*, 'creator' AS myRole FROM study_groups g WHERE g.group_id = ?`,
         [result.insertId]
       );
       res.json({ success: true, group: rows[0] });
@@ -66,14 +66,14 @@ router.get('/', authenticateToken, async (req, res) => {
   const q = (req.query.q || '').trim();
   try {
     let sql = `SELECT g.*, 
-        EXISTS(SELECT 1 FROM study_group_members m WHERE m.groupId=g.id AND m.userId=?) AS isMember
+        EXISTS(SELECT 1 FROM memberships m WHERE m.sgroup_id = g.group_id AND m.student_id = ?) AS isMember
       FROM study_groups g`;
-    const args = [req.user.userId];
+    const args = [req.user.id];
     if (q) {
-      sql += ` WHERE g.name LIKE ? OR g.description LIKE ?`;
+      sql += ` WHERE g.group_name LIKE ? OR g.description LIKE ?`;
       args.push(`%${q}%`, `%${q}%`);
     }
-    sql += ` ORDER BY g.createdAt DESC LIMIT 100`;
+    sql += ` ORDER BY g.date_created DESC LIMIT 100`;
     const [rows] = await req.db.execute(sql, args);
     res.json({ groups: rows });
   } catch (e) {
@@ -87,11 +87,11 @@ router.get('/mine', authenticateToken, async (req, res) => {
   try {
     const [rows] = await req.db.execute(
       `SELECT g.*, m.role AS myRole
-       FROM study_group_members m
-       JOIN study_groups g ON g.id = m.groupId
-       WHERE m.userId = ?
-       ORDER BY g.createdAt DESC`,
-      [req.user.userId]
+       FROM memberships m
+       JOIN study_groups g ON g.group_id = m.sgroup_id
+       WHERE m.student_id = ?
+       ORDER BY g.date_created DESC`,
+      [req.user.id]
     );
     res.json({ groups: rows });
   } catch (e) {
@@ -105,8 +105,8 @@ router.post('/:groupId/join', authenticateToken, ensureStudent, async (req, res)
   const { groupId } = req.params;
   try {
     await req.db.execute(
-      `INSERT IGNORE INTO study_group_members (groupId, userId, role) VALUES (?, ?, 'member')`,
-      [groupId, req.user.userId]
+      `INSERT IGNORE INTO memberships (sgroup_id, student_id, role) VALUES (?, ?, 'member')`,
+      [groupId, req.user.id]
     );
     res.json({ success: true, message: 'Joined group' });
   } catch (e) {
@@ -119,26 +119,26 @@ router.post('/:groupId/join', authenticateToken, ensureStudent, async (req, res)
 router.post('/:groupId/leave', authenticateToken, async (req, res) => {
   const { groupId } = req.params;
   try {
-    // prevent owner from leaving if they are the only owner (simple guard)
-    const [[ownerCount]] = await req.db.execute(
-      `SELECT COUNT(*) AS owners 
-       FROM study_group_members 
-       WHERE groupId=? AND role='owner'`,
+    // prevent creator from leaving if they are the only creator (simple guard)
+    const [[creatorCount]] = await req.db.execute(
+      `SELECT COUNT(*) AS creators 
+       FROM memberships 
+       WHERE sgroup_id = ? AND role = 'creator'`,
       [groupId]
     );
-    const [[isOwner]] = await req.db.execute(
-      `SELECT COUNT(*) AS meOwner 
-       FROM study_group_members 
-       WHERE groupId=? AND userId=? AND role='owner'`,
-      [groupId, req.user.userId]
+    const [[isCreator]] = await req.db.execute(
+      `SELECT COUNT(*) AS meCreator 
+       FROM memberships 
+       WHERE sgroup_id = ? AND student_id = ? AND role = 'creator'`,
+      [groupId, req.user.id]
     );
-    if (isOwner.meOwner && ownerCount.owners <= 1) {
+    if (isCreator.meCreator && creatorCount.creators <= 1) {
       return res.status(400).json({ message: 'Transfer ownership before leaving' });
     }
 
     await req.db.execute(
-      `DELETE FROM study_group_members WHERE groupId=? AND userId=?`,
-      [groupId, req.user.userId]
+      `DELETE FROM memberships WHERE sgroup_id = ? AND student_id = ?`,
+      [groupId, req.user.id]
     );
     res.json({ success: true, message: 'Left group' });
   } catch (e) {
@@ -147,21 +147,45 @@ router.post('/:groupId/leave', authenticateToken, async (req, res) => {
   }
 });
 
+// DELETE a group (creator only)
+router.delete('/:groupId', authenticateToken, ensureStudent, async (req, res) => {
+  const { groupId } = req.params;
+  try {
+    const [[group]] = await req.db.execute(
+      `SELECT group_id, creator_id FROM study_groups WHERE group_id = ?`,
+      [groupId]
+    );
+    if (!group) return res.status(404).json({ message: 'Group not found' });
+
+    // Only the creator can delete
+    if (group.creator_id !== req.user.id) {
+      return res.status(403).json({ message: 'Only the creator can delete this group' });
+    }
+
+    // memberships.sgroup_id -> study_groups.group_id has ON DELETE CASCADE
+    await req.db.execute(`DELETE FROM study_groups WHERE group_id = ?`, [groupId]);
+    res.json({ success: true, message: 'Group deleted' });
+  } catch (e) {
+    console.error('Delete group error:', e);
+    res.status(500).json({ message: 'Failed to delete group' });
+  }
+});
+
 // Group details (members list)
 router.get('/:groupId', authenticateToken, async (req, res) => {
   const { groupId } = req.params;
   try {
     const [[group]] = await req.db.execute(
-      `SELECT * FROM study_groups WHERE id=?`,
+      `SELECT * FROM study_groups WHERE group_id = ?`,
       [groupId]
     );
     if (!group) return res.status(404).json({ message: 'Group not found' });
 
     const [members] = await req.db.execute(
-      `SELECT u.id, u.firstName, u.lastName, u.email, u.studentId, m.role
-       FROM study_group_members m
-       JOIN users u ON u.id = m.userId
-       WHERE m.groupId=?
+      `SELECT u.id, u.firstName, u.lastName, u.email, u.campus_id, m.role
+       FROM memberships m
+       JOIN users u ON u.id = m.student_id
+       WHERE m.sgroup_id = ?
        ORDER BY m.role DESC, u.firstName ASC`,
       [groupId]
     );

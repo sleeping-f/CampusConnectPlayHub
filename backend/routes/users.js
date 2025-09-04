@@ -38,6 +38,7 @@ function shapeProfile(row) {
     email: row.email,
     role: row.role,
     department: row.department ?? null,
+    profileImage: row.profileImage ?? null, // ✅ added
     createdAt: row.createdAt ?? null,
     updatedAt: row.updatedAt ?? null,
   };
@@ -52,6 +53,7 @@ router.get('/me', authenticateToken, async (req, res) => {
       `
       SELECT
         u.id, u.firstName, u.lastName, u.email, u.role, u.campus_id,
+        u.profileImage, -- ✅ added
         u.createdAt, u.updatedAt,
         s.department
       FROM users u
@@ -92,6 +94,7 @@ router.get(
         `
         SELECT
           u.id, u.firstName, u.lastName, u.email, u.campus_id, u.role, u.createdAt,
+          u.profileImage, -- ✅ added
           s.department
         FROM users u
         INNER JOIN students s ON s.user_id = u.id
@@ -123,11 +126,14 @@ router.patch(
   body('lastName').optional().isString().isLength({ min: 1, max: 100 }),
   body('email').optional().isEmail().isLength({ max: 255 }),
   body('department').optional().isString().isLength({ min: 1, max: 100 }),
+  body('profileImage').optional().isString().isLength({ min: 1, max: 255 }), // ✅ added
   async (req, res) => {
     if (sendValidationErrors(req, res)) return;
+    console.log("PATCH /users/me body:", req.body);
+
 
     const id = req.user.id;
-    const { firstName, lastName, email, department } = req.body ?? {};
+    const { firstName, lastName, email, department, profileImage } = req.body ?? {};
 
     try {
       const [[current]] = await req.db.execute(
@@ -142,6 +148,7 @@ router.patch(
       if (typeof firstName !== 'undefined') { setParts.push('firstName = ?'); params.push(firstName); }
       if (typeof lastName !== 'undefined')  { setParts.push('lastName = ?');  params.push(lastName);  }
       if (typeof email !== 'undefined')     { setParts.push('email = ?');     params.push(email);     }
+      if (typeof profileImage !== 'undefined') { setParts.push('profileImage = ?'); params.push(profileImage); } // ✅ added
 
       const willUpdateUsers = setParts.length > 0;
       const wantsDeptChange = typeof department !== 'undefined';
@@ -165,7 +172,7 @@ router.patch(
           );
           if (sRows.length === 0) {
             await req.db.execute(
-              `INSERT INTO students (user_id, department) VALUES (?, ?)`,
+              `INSERT INTO students (user_id, department) VALUES (?, ?)` ,
               [id, department]
             );
           } else {
@@ -187,6 +194,7 @@ router.patch(
         `
         SELECT
           u.id, u.firstName, u.lastName, u.email, u.role, u.campus_id,
+          u.profileImage, -- ✅ added
           u.createdAt, u.updatedAt,
           s.department
         FROM users u

@@ -21,7 +21,6 @@ const FriendProfile = ({ friend, onClose, onBack }) => {
       setIsLoadingRoutines(true);
       const token = localStorage.getItem('token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      // ✅ call the dedicated endpoint that returns routines by USER id
       const response = await axios.get(`/api/routines/user/${friend.id}`, { headers });
       setRoutines(response.data.routines || []);
     } catch (error) {
@@ -78,10 +77,16 @@ const FriendProfile = ({ friend, onClose, onBack }) => {
         {/* Profile Info */}
         <div className="friend-profile-info">
           <div className="friend-avatar">
-            {friend.profileImage ? (
-              <img src={friend.profileImage} alt={`${friend.firstName} ${friend.lastName}`} />
+            {friend?.profileImage ? (
+              <img
+                src={`http://localhost:5000${friend.profileImage}`}
+                alt={`${friend.firstName} ${friend.lastName}`}
+                className="profile-pic"
+              />
             ) : (
-              <div className="avatar-placeholder">{getInitials(friend.firstName, friend.lastName)}</div>
+              <div className="avatar-placeholder">
+                {getInitials(friend.firstName, friend.lastName)}
+              </div>
             )}
           </div>
           <div className="friend-basic-info">

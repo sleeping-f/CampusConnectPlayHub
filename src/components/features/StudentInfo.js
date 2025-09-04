@@ -9,11 +9,18 @@ const StudentInfo = ({ user }) => {
   console.log('User data:', user);
   const [isEditing, setIsEditing] = useState(false);
   const [friendsCount, setFriendsCount] = useState(0);
+
+  // ✅ Always resolve absolute URL for preview
+  const [profilePreview, setProfilePreview] = useState(
+    user?.profileImage ? `http://localhost:5000${user.profileImage}` : null
+  );
+  const [profileFile, setProfileFile] = useState(null);
+
   const [editData, setEditData] = useState({
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
     email: user?.email || '',
-    studentId: user?.studentId || '',
+    studentId: user?.campus_id || '', // ✅ use campus_id here
     department: user?.department || '',
   });
 
@@ -38,11 +45,36 @@ const StudentInfo = ({ user }) => {
 
   const handleSave = async () => {
     try {
-      // TODO: Update user data in backend
-      console.log('Saving user data:', editData);
+      let uploadedUrl = profilePreview;
+
+      // Step 1: Upload new file if chosen
+      if (profileFile) {
+        const formData = new FormData();
+        formData.append("profilePic", profileFile);
+
+        const res = await axios.post(
+          "http://localhost:5000/api/upload/profile-pic",
+          formData,
+          { headers: { "Content-Type": "multipart/form-data" } }
+        );
+        uploadedUrl = `http://localhost:5000${res.data.imageUrl}`;
+      }
+
+      // Step 2: Update DB via PATCH /users/me
+      await axios.patch("http://localhost:5000/api/users/me", {
+        firstName: editData.firstName,
+        lastName: editData.lastName,
+        department: editData.department,
+        campus_id: editData.studentId,  // ✅ backend expects campus_id
+        profileImage: uploadedUrl?.replace("http://localhost:5000", "")
+      }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+
+      setProfilePreview(uploadedUrl);
       setIsEditing(false);
     } catch (error) {
-      console.error('Error saving user data:', error);
+      console.error("Error saving user data:", error);
     }
   };
 
@@ -51,9 +83,11 @@ const StudentInfo = ({ user }) => {
       firstName: user?.firstName || '',
       lastName: user?.lastName || '',
       email: user?.email || '',
-      studentId: user?.studentId || '',
+      studentId: user?.campus_id || '',
       department: user?.department || '',
     });
+    setProfilePreview(user?.profileImage ? `http://localhost:5000${user.profileImage}` : null);
+    setProfileFile(null);
     setIsEditing(false);
   };
 
@@ -62,6 +96,16 @@ const StudentInfo = ({ user }) => {
       ...editData,
       [e.target.name]: e.target.value,
     });
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setProfileFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setProfilePreview(reader.result);
+      reader.readAsDataURL(file);
+    }
   };
 
   const getRoleDisplay = (role) => {
@@ -122,9 +166,16 @@ const StudentInfo = ({ user }) => {
       <div className="info-content">
         <div className="profile-card">
           <div className="profile-avatar">
-            <div className="avatar-placeholder">
-              {user?.firstName?.charAt(0)?.toUpperCase() || 'U'}
-            </div>
+            {profilePreview ? (
+              <img src={profilePreview} alt="Profile" className="profile-pic" />
+            ) : (
+              <div className="avatar-placeholder">
+                {user?.firstName?.charAt(0)?.toUpperCase() || 'U'}
+              </div>
+            )}
+            {isEditing && (
+              <input type="file" accept="image/*" onChange={handleImageChange} />
+            )}
           </div>
 
           <div className="profile-details">

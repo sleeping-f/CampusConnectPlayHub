@@ -65,13 +65,11 @@ const shapeUser = (r) => ({
   email: r.email,
   campus_id: r.campus_id,
   department: r.department ?? null,
+  profileImage: r.profileImage ?? null, // ✅ added
 });
 
 /* ===================================================================== */
-/* 1) --- POST send request ---
-   student_id_1 (me) sends a request to student_id_2
-   Creates or re-sends with status='pending'
-*/
+/* 1) --- POST send request --- */
 router.post('/request', requireDb, authenticateToken, async (req, res) => {
   try {
     const student_id_1 = Number(req.user.id);
@@ -86,7 +84,6 @@ router.post('/request', requireDb, authenticateToken, async (req, res) => {
 
     await assertBothStudents(req.db, student_id_1, student_id_2);
 
-    // If opposite pending exists (they already sent me), surface that state
     const [[opp]] = await req.db.execute(
       `SELECT status FROM friends WHERE student_id_1 = ? AND student_id_2 = ?`,
       [student_id_2, student_id_1]
@@ -95,12 +92,10 @@ router.post('/request', requireDb, authenticateToken, async (req, res) => {
       return res.status(200).json({ message: 'Incoming request already pending' });
     }
 
-    // Upsert this directional edge to pending
-    // Assumes a unique key on (student_id_1, student_id_2)
     await req.db.execute(
-      `INSERT INTO friends (student_id_1, student_id_2, status, dateAdded)
+      `INSERT INTO friends (student_id_1, student_id_2, status, date_added)
        VALUES (?, ?, 'pending', NULL)
-       ON DUPLICATE KEY UPDATE status='pending', dateAdded=NULL`,
+       ON DUPLICATE KEY UPDATE status='pending', date_added=NULL`,
       [student_id_1, student_id_2]
     );
 
@@ -117,13 +112,7 @@ router.post('/request', requireDb, authenticateToken, async (req, res) => {
 });
 
 /* ===================================================================== */
-/* 2) --- PUT respond to request ---
-   Accept/decline pending.
-   - Recipient (student_id_2) can ACCEPT or DECLINE an incoming pending request:
-       body: { student_id_1, action: 'accept' | 'decline' }
-   - Sender (student_id_1) can DECLINE (retract) their own pending request:
-       body: { student_id_2, action: 'decline' }
-*/
+/* 2) --- PUT respond to request --- */
 router.put('/respond', requireDb, authenticateToken, async (req, res) => {
   try {
     const me = Number(req.user.id);
@@ -133,8 +122,8 @@ router.put('/respond', requireDb, authenticateToken, async (req, res) => {
       return res.status(400).json({ message: "action must be 'accept' or 'decline'" });
     }
 
-    const incoming_sender_id = Number(req.body?.student_id_1); // sender for incoming
-    const outgoing_recipient_id = Number(req.body?.student_id_2);                       // recipient for outgoing
+    const incoming_sender_id = Number(req.body?.student_id_1);
+    const outgoing_recipient_id = Number(req.body?.student_id_2);
 
     if (incoming_sender_id && outgoing_recipient_id) {
       return res.status(400).json({ message: 'Provide either student_id_1 (incoming) OR student_id_2 (outgoing), not both' });
@@ -143,11 +132,9 @@ router.put('/respond', requireDb, authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'Missing student_id_1 (incoming) or student_id_2 (outgoing)' });
     }
 
-    // validate users exist & are students
     await assertBothStudents(req.db, me, incoming_sender_id || outgoing_recipient_id);
 
     if (incoming_sender_id) {
-      // I am the recipient; they sent me → (student_id_1 = incoming_sender_id, student_id_2 = me)
       const [[row]] = await req.db.execute(
         `SELECT status FROM friends WHERE student_id_1 = ? AND student_id_2 = ?`,
         [incoming_sender_id, me]
@@ -158,7 +145,7 @@ router.put('/respond', requireDb, authenticateToken, async (req, res) => {
 
       if (action === 'accept') {
         await req.db.execute(
-          `UPDATE friends SET status = 'accepted', dateAdded = NOW()
+          `UPDATE friends SET status = 'accepted', date_added = NOW()
            WHERE student_id_1 = ? AND student_id_2 = ? AND status = 'pending'`,
           [incoming_sender_id, me]
         );
@@ -170,7 +157,6 @@ router.put('/respond', requireDb, authenticateToken, async (req, res) => {
         });
       }
 
-      // decline as recipient → delete pending
       await req.db.execute(
         `DELETE FROM friends WHERE student_id_1 = ? AND student_id_2 = ? AND status = 'pending'`,
         [incoming_sender_id, me]
@@ -183,7 +169,6 @@ router.put('/respond', requireDb, authenticateToken, async (req, res) => {
       });
     }
 
-    // Outgoing retract: I am the sender; row must be (student_id_1 = me, student_id_2 = outgoing_recipient_id)
     if (action !== 'decline') {
       return res.status(403).json({ message: 'Senders can only decline (retract) their own pending requests' });
     }
@@ -213,15 +198,13 @@ router.put('/respond', requireDb, authenticateToken, async (req, res) => {
 });
 
 /* ===================================================================== */
-/* 3) --- GET accepted friends (for FriendFinder list) ---
-   Response: { friends: [ { friend: <user>, since: <date|null> } ] }
-*/
+/* 3) --- GET accepted friends --- */
 router.get('/', requireDb, authenticateToken, async (req, res) => {
   try {
     const me = Number(req.user.id);
     const [rows] = await req.db.execute(
       `
-      SELECT u.id, u.firstName, u.lastName, u.email, u.campus_id, s.department, f.dateAdded
+      SELECT u.id, u.firstName, u.lastName, u.email, u.campus_id, s.department, u.profileImage, f.date_added
       FROM users u, students s, friends f
       WHERE u.id = s.user_id
         AND (
@@ -233,7 +216,7 @@ router.get('/', requireDb, authenticateToken, async (req, res) => {
       `,
       [me, me]
     );
-    const friends = rows.map(r => ({ friend: shapeUser(r), since: r.dateAdded || null }));
+    const friends = rows.map(r => ({ friend: shapeUser(r), since: r.date_added || null }));
     return res.json({ friends });
   } catch (err) {
     console.error('GET /friends:', err);
@@ -242,10 +225,7 @@ router.get('/', requireDb, authenticateToken, async (req, res) => {
 });
 
 /* ===================================================================== */
-/* 3b) --- SEARCH accepted friends ---
-   GET /api/friends/search?q=...
-   Returns only accepted friends matching q
-*/
+/* 3b) --- SEARCH accepted friends --- */
 router.get('/search', requireDb, authenticateToken, async (req, res) => {
   try {
     const me = Number(req.user.id);
@@ -254,7 +234,7 @@ router.get('/search', requireDb, authenticateToken, async (req, res) => {
 
     const [rows] = await req.db.execute(
       `
-      SELECT u.id, u.firstName, u.lastName, u.email, u.campus_id, s.department
+      SELECT u.id, u.firstName, u.lastName, u.email, u.campus_id, s.department, u.profileImage
       FROM users u, students s, friends f
       WHERE u.id = s.user_id
         AND f.status = 'accepted'
@@ -278,18 +258,14 @@ router.get('/search', requireDb, authenticateToken, async (req, res) => {
 });
 
 /* ===================================================================== */
-/* 4) --- GET pending requests ---
-   Returns incoming (I can act) and outgoing (I sent) separately.
-   Resp: { incoming: [users], outgoing: [users] }
-*/
+/* 4) --- GET pending requests --- */
 router.get('/pending', requireDb, authenticateToken, async (req, res) => {
   try {
     const me = Number(req.user.id);
 
-    // incoming → they sent me: (student_id_1 = them, student_id_2 = me)
     const [inRows] = await req.db.execute(
       `
-      SELECT u.id, u.firstName, u.lastName, u.email, u.campus_id, s.department
+      SELECT u.id, u.firstName, u.lastName, u.email, u.campus_id, s.department, u.profileImage
       FROM users u, students s, friends f
       WHERE u.id = s.user_id
         AND f.status = 'pending'
@@ -300,10 +276,9 @@ router.get('/pending', requireDb, authenticateToken, async (req, res) => {
       [me]
     );
 
-    // outgoing → I sent them: (student_id_1 = me, student_id_2 = them)
     const [outRows] = await req.db.execute(
       `
-      SELECT u.id, u.firstName, u.lastName, u.email, u.campus_id, s.department
+      SELECT u.id, u.firstName, u.lastName, u.email, u.campus_id, s.department, u.profileImage
       FROM users u, students s, friends f
       WHERE u.id = s.user_id
         AND f.status = 'pending'
@@ -325,10 +300,7 @@ router.get('/pending', requireDb, authenticateToken, async (req, res) => {
 });
 
 /* ===================================================================== */
-/* 5) --- DELETE friend ---
-   Either side can delete an accepted friendship OR a pending edge.
-   Route keeps old param (:friendId) for compatibility.
-*/
+/* 5) --- DELETE friend --- */
 router.delete('/:friendId(\\d+)', requireDb, authenticateToken, async (req, res) => {
   try {
     const me = Number(req.user.id);

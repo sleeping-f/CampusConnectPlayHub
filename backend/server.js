@@ -10,41 +10,36 @@ const mysql = require('mysql2/promise');
 dotenv.config();
 
 const authRoutes = require('./routes/auth');
-const userRoutes = require('./routes/users');
+const userRoutes = require('./routes/users');     // ✅ users route
+const uploadRoutes = require('./routes/upload');  // ✅ upload route
 const routineRoutes = require('./routes/routines');
 const friendsRoutes = require('./routes/friends');
 const feedbackRoutes = require('./routes/feedback');
 const bugRoutes = require('./routes/bugs');
-const studyGroupsRoutes = require('./routes/study_groups');
-const studyGroupMembershipsRoutes = require('./routes/study_groups_memberships');
+const studyGroupsRoutes = require("./routes/study-groups");
+const membershipsRoutes = require('./routes/memberships');
 const adminRoutes = require('./routes/admin');
 
 const app = express();
 
 /* ------------------------- CORS: PERMISSIVE FOR DEV ------------------------- */
-// Allow any origin in dev to eliminate preflight issues while debugging
 const corsOptions = {
   origin: (origin, cb) => cb(null, true),
   credentials: true,
-  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  methods: ['GET','POST','PUT','DELETE','PATCH','OPTIONS'], // ✅ added PATCH
   allowedHeaders: ['Content-Type','Authorization'],
 };
 app.use(cors(corsOptions));
-// Fast-path preflight so it always carries CORS headers
 app.use((req, res, next) => {
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   return next();
 });
 /* --------------------------------------------------------------------------- */
 
-// Security middleware AFTER CORS
 app.use(helmet({ crossOriginResourcePolicy: false, crossOriginEmbedderPolicy: false }));
-
-// Rate limiting AFTER CORS
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 app.use(limiter);
 
-// Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -80,7 +75,7 @@ const initializeDatabase = async (connection) => {
         campus_id VARCHAR(50) NOT NULL UNIQUE,
         role ENUM('student','manager','admin') DEFAULT 'student',
         googleId VARCHAR(100),
-        profileImage VARCHAR(255),
+        profileImage VARCHAR(255),   -- ✅ column for profile pic
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       ) ENGINE=InnoDB;
@@ -92,12 +87,14 @@ const initializeDatabase = async (connection) => {
         CONSTRAINT fk_admin_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );
     `);
+
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS managers (
         user_id INT PRIMARY KEY,
         CONSTRAINT fk_manager_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );
     `);
+
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS students (
         user_id INT PRIMARY KEY,
@@ -130,8 +127,8 @@ const initializeDatabase = async (connection) => {
       CREATE TABLE IF NOT EXISTS friends (
         student_id_1 INT NOT NULL,
         student_id_2 INT NOT NULL,
-        status ENUM('pending','accepted','rejected') DEFAULT 'pending',
-        dateAdded TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        status ENUM('pending', 'accepted', 'rejected') DEFAULT 'pending',
+        date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (student_id_1, student_id_2),
         CONSTRAINT friends_ordered CHECK (student_id_1 <> student_id_2),
         CONSTRAINT fk_student1 FOREIGN KEY (student_id_1) REFERENCES users(id) ON DELETE CASCADE,
@@ -141,23 +138,23 @@ const initializeDatabase = async (connection) => {
 
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS study_groups (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        group_id INT AUTO_INCREMENT PRIMARY KEY,
         group_name VARCHAR(100) NOT NULL,
         description TEXT,
         creator_id INT NOT NULL,
         date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT fk_sg_creator FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE
+        CONSTRAINT fk_sg_creator FOREIGN KEY (creator_id) REFERENCES students(user_id) ON DELETE CASCADE
       );
     `);
+
     await connection.execute(`
-      CREATE TABLE IF NOT EXISTS study_group_memberships (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        group_id INT NOT NULL,
+      CREATE TABLE IF NOT EXISTS memberships (
+        sgroup_id INT NOT NULL,
         student_id INT NOT NULL,
-        role ENUM('member','owner') DEFAULT 'member',
+        role ENUM('member','creator') DEFAULT 'member',
         date_joined TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT fk_sgm_group FOREIGN KEY (group_id) REFERENCES study_groups(id) ON DELETE CASCADE,
-        CONSTRAINT fk_sgm_student FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
+        CONSTRAINT fk_sgm_group FOREIGN KEY (sgroup_id) REFERENCES study_groups(group_id) ON DELETE CASCADE,
+        CONSTRAINT fk_sgm_student FOREIGN KEY (student_id) REFERENCES students(user_id) ON DELETE CASCADE
       );
     `);
 
@@ -218,34 +215,34 @@ app.use(async (req, res, next) => {
 
 app.set('trust proxy', 1);
 
-// Mount routes
+// Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
+app.use('/api/users', userRoutes);     // ✅ users
+app.use('/api/upload', uploadRoutes);  // ✅ upload
 app.use('/api/routines', routineRoutes);
 app.use('/api/friends', friendsRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/bugs', bugRoutes);
-app.use('/api/study_groups', studyGroupsRoutes);
-app.use('/api/study_groups_memberships', studyGroupMembershipsRoutes);
+app.use('/api/study-groups', studyGroupsRoutes);
+app.use('/api/memberships', membershipsRoutes);
 app.use('/api/admin', adminRoutes);
 
-// Health
+// ✅ serve uploaded files
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'CampusConnectPlayHub API is running', timestamp: new Date().toISOString() });
 });
 
-// Errors
 app.use((err, req, res, next) => {
   console.error('Error:', err);
   res.status(500).json({ message: 'Internal server error', error: process.env.NODE_ENV === 'development' ? err.message : undefined });
 });
 
-// 404
 app.use('*', (req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
-// Start
 const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   try {

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
-import { FiUser, FiCalendar, FiClock, FiSettings, FiLogOut, FiPlus, FiEdit3, FiUsers, FiAlertTriangle } from 'react-icons/fi';
+import { FiUser, FiCalendar, FiClock, FiSettings, FiLogOut, FiPlus, FiEdit3, FiUsers, FiBookOpen, FiAlertTriangle } from 'react-icons/fi';
 import StudentInfo from './StudentInfo';
 import RoutineManager from './RoutineManager';
 import FriendFinder from './FriendFinder';
+import StudyGroups from './StudyGroups';
 import './Dashboard.css';
 import FeedbackForm from "./FeedbackForm";
 import BugReportForm from "./BugReportForm";
@@ -24,6 +25,7 @@ const Dashboard = () => {
     { id: 'info', label: 'Profile', icon: FiUser },
     { id: 'routine', label: 'Routine', icon: FiCalendar },
     { id: 'friends', label: 'Friends', icon: FiUsers },
+    { id: 'studyGroups', label: 'Study Groups', icon: FiBookOpen },
   ];
 
   const renderTabContent = () => {
@@ -34,6 +36,8 @@ const Dashboard = () => {
         return <RoutineManager user={user} />;
       case 'friends':
         return <FriendFinder />;
+      case 'studyGroups':
+        return <StudyGroups me={user} />;
       default:
         return <StudentInfo user={user} />;
     }
@@ -52,6 +56,23 @@ const Dashboard = () => {
           >
             CampusConnect<span className="title-accent">PlayHub</span>
           </motion.h1>
+
+          {/* ✅ Added profile avatar */}
+          <div className="header-user">
+            {user?.profileImage ? (
+              <img
+                src={`http://localhost:5000${user.profileImage}`}
+                alt="Profile"
+                className="profile-pic-small"
+              />
+            ) : (
+              <div className="avatar-placeholder-small">
+                {user?.firstName?.charAt(0)?.toUpperCase() || 'U'}
+              </div>
+            )}
+            <span className="header-username">{user?.firstName}</span>
+          </div>
+          {/* ✅ End avatar */}
 
           <div className="header-actions">
             <motion.button
@@ -176,7 +197,6 @@ const RoutineModal = ({ onClose, user }) => {
     onClose();
   };
 
-
   return (
     <div className="modal-overlay" onClick={onClose}>
       <motion.div
@@ -247,7 +267,6 @@ const RoutineModal = ({ onClose, user }) => {
               />
             </div>
           </div>
-
 
           <div className="form-group">
             <label>Activity</label>

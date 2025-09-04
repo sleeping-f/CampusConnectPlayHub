@@ -593,3 +593,46 @@
     transform: translateY(-100px);
   }
 }
+/* === Profile picture in Dashboard header === */
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-right: 1rem;
+}
+
+.profile-pic-small {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #667eea;
+  box-shadow: 0 4px 10px rgba(102, 126, 234, 0.4);
+  transition: transform 0.3s ease, border-color 0.3s ease;
+}
+
+.profile-pic-small:hover {
+  transform: scale(1.05);
+  border-color: #764ba2;
+}
+
+.avatar-placeholder-small {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1rem;
+  box-shadow: 0 4px 10px rgba(102, 126, 234, 0.4);
+}
+
+.header-username {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #ffffff;
+  text-shadow: 0 0 6px rgba(120, 119, 198, 0.5);
+}
