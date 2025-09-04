@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
-import { FiUser, FiCalendar, FiClock, FiSettings, FiLogOut, FiPlus, FiEdit3, FiUsers, FiBookOpen, FiAlertTriangle } from 'react-icons/fi';
+import { FiUser, FiCalendar, FiClock, FiSettings, FiLogOut, FiPlus, FiEdit3, FiUsers, FiBookOpen, FiAlertTriangle, FiGrid } from 'react-icons/fi';
 import StudentInfo from './StudentInfo';
 import RoutineManager from './RoutineManager';
 import FriendFinder from './FriendFinder';
 import StudyGroups from './StudyGroups';
+import ArcadeGames from './ArcadeGames';
 import './Dashboard.css';
 import FeedbackForm from "./FeedbackForm";
 import BugReportForm from "./BugReportForm";
@@ -26,6 +27,7 @@ const Dashboard = () => {
     { id: 'routine', label: 'Routine', icon: FiCalendar },
     { id: 'friends', label: 'Friends', icon: FiUsers },
     { id: 'studyGroups', label: 'Study Groups', icon: FiBookOpen },
+    { id: 'arcade', label: 'Arcade', icon: FiGrid },
   ];
 
   const renderTabContent = () => {
@@ -38,6 +40,8 @@ const Dashboard = () => {
         return <FriendFinder />;
       case 'studyGroups':
         return <StudyGroups me={user} />;
+      case 'arcade':
+        return <ArcadeGames />;
       default:
         return <StudentInfo user={user} />;
     }

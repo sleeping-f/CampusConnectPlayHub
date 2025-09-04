@@ -18,6 +18,7 @@ const bugRoutes = require('./routes/bugs');
 const studyGroupsRoutes = require("./routes/study-groups");
 const membershipsRoutes = require('./routes/memberships');
 const adminRoutes = require('./routes/admin');
+const gamesRoutes = require('./routes/games');
 
 const app = express();
 
@@ -25,8 +26,8 @@ const app = express();
 const corsOptions = {
   origin: (origin, cb) => cb(null, true),
   credentials: true,
-  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 };
 app.use(cors(corsOptions));
 app.use((req, res, next) => {
@@ -36,16 +37,38 @@ app.use((req, res, next) => {
 /* --------------------------------------------------------------------------- */
 
 app.use(helmet({ crossOriginResourcePolicy: false, crossOriginEmbedderPolicy: false }));
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
-app.use(limiter);
+
+// Create rate limiter but exclude auth routes
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // Allow 1000 requests per 15 minutes (much more generous for development)
+  message: 'Too many requests, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting for authentication routes
+    return req.path.startsWith('/api/auth/');
+  }
+});
+
+// Apply rate limiter to all routes except auth
+// TEMPORARILY DISABLED FOR DEVELOPMENT - UNCOMMENT FOR PRODUCTION
+/*
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/auth/')) {
+    return next(); // Skip rate limiting for auth routes
+  }
+  return limiter(req, res, next);
+});
+*/
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-/* --------------------------- DB: connection per request -------------------- */
-const createDatabaseConnection = async () => {
+/* --------------------------- DB: connection pool -------------------- */
+const createDatabasePool = () => {
   try {
-    const connection = await mysql.createConnection({
+    const pool = mysql.createPool({
       host: process.env.DB_HOST || 'localhost',
       user: process.env.DB_USER || 'root',
       password: process.env.DB_PASSWORD || '',
@@ -53,14 +76,19 @@ const createDatabaseConnection = async () => {
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0,
+      acquireTimeout: 60000,
+      timeout: 60000,
+      reconnect: true
     });
-    console.log('✅ Database connected successfully');
-    return connection;
+    console.log('✅ Database pool created successfully');
+    return pool;
   } catch (error) {
-    console.error('❌ Database connection failed:', error);
+    console.error('❌ Database pool creation failed:', error);
     process.exit(1);
   }
 };
+
+const dbPool = createDatabasePool();
 
 const initializeDatabase = async (connection) => {
   try {
@@ -198,6 +226,77 @@ const initializeDatabase = async (connection) => {
       ) ENGINE=InnoDB;
     `);
 
+    // Create games table
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS games (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(50) NOT NULL UNIQUE,
+        description TEXT,
+        max_players INT NOT NULL DEFAULT 2,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB;
+    `);
+
+    // Create game_rooms table
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS game_rooms (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        room_code VARCHAR(10) NOT NULL UNIQUE,
+        game_id INT NOT NULL,
+        creator_id INT NOT NULL,
+        status ENUM('waiting', 'playing', 'finished') DEFAULT 'waiting',
+        current_player_id INT NULL,
+        game_state JSON NULL,
+        winner_id INT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT fk_room_game FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+        CONSTRAINT fk_room_creator FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE,
+        CONSTRAINT fk_room_current_player FOREIGN KEY (current_player_id) REFERENCES users(id) ON DELETE SET NULL,
+        CONSTRAINT fk_room_winner FOREIGN KEY (winner_id) REFERENCES users(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB;
+    `);
+
+    // Create game_room_players table
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS game_room_players (
+        room_id INT NOT NULL,
+        player_id INT NOT NULL,
+        player_symbol VARCHAR(5) NOT NULL,
+        joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (room_id, player_id),
+        CONSTRAINT fk_grp_room FOREIGN KEY (room_id) REFERENCES game_rooms(id) ON DELETE CASCADE,
+        CONSTRAINT fk_grp_player FOREIGN KEY (player_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB;
+    `);
+
+    // Create game_statistics table
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS game_statistics (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        game_id INT NOT NULL,
+        wins INT UNSIGNED DEFAULT 0,
+        losses INT UNSIGNED DEFAULT 0,
+        draws INT UNSIGNED DEFAULT 0,
+        total_games INT UNSIGNED DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_user_game (user_id, game_id),
+        CONSTRAINT fk_stats_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        CONSTRAINT fk_stats_game FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB;
+    `);
+
+    // Insert default games
+    await connection.execute(`
+      INSERT IGNORE INTO games (name, description, max_players) VALUES 
+      ('tic-tac-toe', 'Classic Tic Tac Toe game', 2),
+      ('connect-four', 'Connect Four game (coming soon)', 2),
+      ('chess', 'Chess game (coming soon)', 2)
+    `);
+
     console.log('✅ Database tables initialized successfully');
   } catch (error) {
     console.error('❌ Database initialization failed:', error);
@@ -205,14 +304,9 @@ const initializeDatabase = async (connection) => {
   }
 };
 
-app.use(async (req, res, next) => {
-  try {
-    if (!req.db) req.db = await createDatabaseConnection();
-    next();
-  } catch (error) {
-    console.error('Database connection error:', error);
-    res.status(500).json({ message: 'Database connection failed' });
-  }
+app.use((req, res, next) => {
+  req.db = dbPool;
+  next();
 });
 
 app.set('trust proxy', 1);
@@ -227,6 +321,7 @@ app.use('/api/bugs', bugRoutes);
 app.use('/api/study-groups', studyGroupsRoutes);
 app.use('/api/memberships', membershipsRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api', gamesRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'CampusConnectPlayHub API is running', timestamp: new Date().toISOString() });
@@ -244,8 +339,8 @@ app.use('*', (req, res) => {
 const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   try {
-    const connection = await createDatabaseConnection();
-    await initializeDatabase(connection);
+    // Initialize database using the pool
+    await initializeDatabase(dbPool);
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
@@ -259,5 +354,14 @@ const startServer = async () => {
 };
 startServer();
 
-process.on('SIGTERM', () => { console.log('SIGTERM received, shutting down gracefully'); process.exit(0); });
-process.on('SIGINT',  () => { console.log('SIGINT received, shutting down gracefully');  process.exit(0); });
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  dbPool.end();
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down gracefully');
+  dbPool.end();
+  process.exit(0);
+});
