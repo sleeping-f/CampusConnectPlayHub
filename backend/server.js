@@ -155,7 +155,7 @@ const initializeDatabase = async (connection) => {
       CREATE TABLE IF NOT EXISTS friends (
         student_id_1 INT NOT NULL,
         student_id_2 INT NOT NULL,
-        status ENUM('pending', 'accepted', 'rejected') DEFAULT 'pending',
+        status ENUM('pending', 'accepted', 'declined') DEFAULT 'pending',
         date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (student_id_1, student_id_2),
         CONSTRAINT friends_ordered CHECK (student_id_1 <> student_id_2),
@@ -364,3 +364,4 @@ process.on('SIGINT', () => {
   dbPool.end();
   process.exit(0);
 });
+
