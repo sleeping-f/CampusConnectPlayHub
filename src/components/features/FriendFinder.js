@@ -442,7 +442,7 @@ const FriendFinder = () => {
                     <FiCheck /> Accept
                 </button>
                 <button
-                    className="reject-btn"
+                    className="decline-btn"
                     onClick={() => respondToFriendRequest(p.id, 'decline')}
                 >
                     <FiX /> Decline
