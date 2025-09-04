@@ -293,9 +293,7 @@ const initializeDatabase = async (connection) => {
     await connection.execute(`
       INSERT IGNORE INTO games (name, description, max_players) VALUES 
       ('tic-tac-toe', 'Classic Tic Tac Toe game', 2),
-      ('rock-paper-scissors', 'Rock Paper Scissors - First to 5 wins!', 2),
-      ('connect-four', 'Connect Four game (coming soon)', 2),
-      ('chess', 'Chess game (coming soon)', 2)
+      ('rock-paper-scissors', 'Rock Paper Scissors - First to 5 wins!', 2)
     `);
 
     console.log('✅ Database tables initialized successfully');
