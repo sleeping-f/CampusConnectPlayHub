@@ -1,0 +1,353 @@
+/* Student Info Styles */
+.student-info {
+  width: 100%;
+}
+
+.info-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(120, 119, 198, 0.3);
+}
+
+.info-header h2 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+  text-shadow: 0 0 15px rgba(120, 119, 198, 0.5);
+}
+
+.edit-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.info-content {
+  display: grid;
+  gap: 32px;
+}
+
+/* Profile Card */
+.profile-card {
+  background: rgba(26, 26, 46, 0.8);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 32px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(120, 119, 198, 0.2);
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+  transition: all 0.3s ease;
+}
+
+.profile-card:hover {
+  transform: translateY(-5px);
+  box-shadow:
+    0 15px 40px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(120, 119, 198, 0.3);
+}
+
+.profile-avatar {
+  flex-shrink: 0;
+}
+
+.avatar-placeholder {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 2rem;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+}
+
+.profile-details {
+  flex: 1;
+}
+
+/* Info Fields */
+.info-fields {
+  display: grid;
+  gap: 24px;
+  opacity: .9;
+}
+
+.info-field {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
+  background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #533483 100%);
+  border-radius: 12px;
+  border: 1px solid #5c626e;
+}
+
+.field-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #374582 0%, #573778 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 18px;
+}
+
+.field-content {
+  flex: 1;
+}
+
+.field-content label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #b8c4db;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.field-content p {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #c6c6c6;
+  margin: 0;
+}
+
+/* Edit Form */
+.edit-form {
+  display: grid;
+  gap: 20px;
+}
+
+.edit-form .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.edit-form .form-group {
+  margin-bottom: 0;
+}
+
+.edit-form label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+.edit-form input,
+.edit-form select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease;
+}
+
+.edit-form input:focus,
+.edit-form select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.edit-form input:disabled {
+  background-color: #f9fafb;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+/* Stats Section */
+.stats-section {
+  background: rgba(26, 26, 46, 0.8);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 32px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(120, 119, 198, 0.2);
+  gap: 32px;
+  align-items: flex-start;
+  transition: all 0.3s ease;
+}
+
+
+.stats-section h3 {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #845add;
+  margin: 0 0 24px 0;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.stat-card {
+  background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #533483 100%);
+  opacity: .1;
+  border-radius: 12px;
+  border: 1px solid #5c626e;
+  padding: 24px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.stat-number {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #667eea;
+  margin-bottom: 8px;
+  font-family: 'Poppins', sans-serif;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .info-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .edit-actions {
+    width: 100%;
+  }
+
+  .edit-actions .btn {
+    flex: 1;
+  }
+
+  .profile-card {
+    flex-direction: column;
+    text-align: center;
+    gap: 24px;
+  }
+
+  .info-field {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+
+  .edit-form .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+
+  .profile-card,
+  .stats-section {
+    padding: 24px 20px;
+  }
+
+  .info-header h2 {
+    font-size: 1.5rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-number {
+    font-size: 2rem;
+  }
+
+  .avatar-placeholder {
+    width: 60px;
+    height: 60px;
+    font-size: 1.5rem;
+  }
+}
+
+/* Animation for stats */
+.stat-card {
+  animation: fadeInUp 0.6s ease forwards;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.stat-card:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.stat-card:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.stat-card:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.stat-card:nth-child(4) {
+  animation-delay: 0.4s;
+}
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Loading state for edit form */
+.edit-form.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Success/Error states */
+.field-content p.success {
+  color: #10b981;
+}
+
+.field-content p.error {
+  color: #ef4444;
+}
+
+/* Hover effects */
+.info-field:hover {
+  background: linear-gradient(135deg, #1f1f47 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #533483 100%);
+  border-color: #d1d5db;
+}
+
+.stat-card:hover .stat-number {
+  color: #764ba2;
+}

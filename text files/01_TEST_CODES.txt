@@ -1,0 +1,64 @@
+------------DIRECT MYSQL CODES TO TEST PROGRAM THROUGH TERMINAL------------
+
+
+
+
+// PROCEDURE TO INSERT USERS
+DELIMITER $$
+CREATE PROCEDURE create_student_user(
+  IN p_firstName VARCHAR(50),
+  IN p_lastName  VARCHAR(50),
+  IN p_email     VARCHAR(100),
+  IN p_password  VARCHAR(255),
+  IN p_campus_id VARCHAR(50),
+  IN p_department VARCHAR(100)
+)
+BEGIN
+  START TRANSACTION;
+    INSERT INTO users (firstName, lastName, email, password, campus_id, role)
+    VALUES (p_firstName, p_lastName, p_email, p_password, p_campus_id, 'student');
+
+    INSERT INTO students (user_id, department)
+    VALUES (LAST_INSERT_ID(), p_department);
+  COMMIT;
+END$$
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS create_student_user;
+
+
+
+
+// CALL TO INSERT USERS
+CALL create_student_user('Walter', 'White', 'breakingbad@gmail.com', '12345678', 'MONEYS420', 'Chemistry');
+CALL create_student_user('Saul', 'Goodman', 'bettercallsaul@gmail.com', '12345678', 'LAWYER420', 'Law');
+
+
+
+
+// SELECT USERS (STUDENTS)
+SELECT
+u.id, CONCAT(u.firstName, ' ', u.lastName) AS user_name, u.email, u.campus_id, u.role, s.department
+FROM users u, students s
+WHERE u.id = s.user_id
+AND u.role = 'student';
+
+
+
+
+// INSERT USERS INTO FRIENDS
+INSERT INTO friends (student_id_1, student_id_2, status)
+VALUES (34, 35, 'accepted');
+
+
+
+
+// SELECT USERS (STUDENTS) FROM FRIENDS TABLE
+SELECT
+f.student_id_1, CONCAT(u1.firstName, ' ', u1.lastName) AS user1_name, u1.campus_id AS user1_campus_id,
+f.student_id_2, CONCAT(u2.firstName, ' ', u2.lastName) AS user2_name, u2.campus_id AS user2_campus_id,
+f.status, f.date_added
+FROM users u1, users u2, friends f
+WHERE u1.id = f.student_id_1
+AND u2.id = f.student_id_2
+ORDER BY f.status, f.date_added DESC;
