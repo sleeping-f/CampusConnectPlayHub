@@ -1,12 +1,19 @@
 # CampusConnectPlayHub 🎓🎮
 
 After cloning
+
 -rename both exampl.env to .env
+
 -cd backend
+
 -npm install
+
 -npm start
+
 -in another terminal npm install
+
 -npm start
+
 
 A comprehensive campus social platform that connects students through food, gaming, academics, and social activities.
 
@@ -279,4 +286,5 @@ If you encounter any issues or have questions:
 ---
 
 **Made with ❤️ for the campus community**
+
 
