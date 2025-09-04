@@ -200,6 +200,10 @@ const FriendFinder = () => {
       if (action === 'accept') {
         await fetchFriends();
         toast.success('Friend request accepted');
+        // Refresh friends count in StudentInfo component
+        if (window.refreshFriendsCount) {
+          window.refreshFriendsCount();
+        }
       } else {
         toast.success('Friend request declined');
       }
@@ -218,6 +222,10 @@ const FriendFinder = () => {
       // reflect in search results if visible
       setSearchResults(prev => prev.map(r => (r.id === friendId ? { ...r, _isFriend: false } : r)));
       toast.success('Friend removed');
+      // Refresh friends count in StudentInfo component
+      if (window.refreshFriendsCount) {
+        window.refreshFriendsCount();
+      }
     } catch (err) {
       console.error('DELETE /api/friends/:id error:', err?.response || err);
       const msg = err?.response?.data?.message || 'Failed to remove friend';

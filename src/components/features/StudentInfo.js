@@ -2,18 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FiUser, FiMail, FiHash, FiBookOpen, FiEdit3, FiSave, FiX } from 'react-icons/fi';
 import axios from 'axios';
+import toast from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
 import './StudentInfo.css';
 import GradientText from '../common/GradientText';
 
 const StudentInfo = ({ user }) => {
   console.log('User data:', user);
+  const { user: authUser, updateUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [friendsCount, setFriendsCount] = useState(0);
   const [editData, setEditData] = useState({
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
     email: user?.email || '',
-    studentId: user?.studentId || '',
+    campus_id: user?.campus_id || '',
     department: user?.department || '',
   });
 
@@ -23,12 +26,27 @@ const StudentInfo = ({ user }) => {
     }
   }, [user]);
 
+  // Add a function to refresh friends count that can be called from parent components
+  const refreshFriendsCount = () => {
+    fetchFriendsCount();
+  };
+
+  // Expose the refresh function to parent components
+  useEffect(() => {
+    if (window.refreshFriendsCount) {
+      window.refreshFriendsCount = refreshFriendsCount;
+    }
+  }, []);
+
   const fetchFriendsCount = async () => {
     try {
-      const response = await axios.get('/api/users/friends');
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const response = await axios.get('http://localhost:5000/api/friends', { headers });
       setFriendsCount(response.data.friends?.length || 0);
     } catch (error) {
       console.error('Error fetching friends count:', error);
+      setFriendsCount(0);
     }
   };
 
@@ -38,11 +56,45 @@ const StudentInfo = ({ user }) => {
 
   const handleSave = async () => {
     try {
-      // TODO: Update user data in backend
-      console.log('Saving user data:', editData);
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+      // Prepare the data to send to the backend
+      const updateData = {
+        firstName: editData.firstName,
+        lastName: editData.lastName,
+        email: editData.email,
+        campus_id: editData.campus_id,
+        department: editData.department
+      };
+
+      // Remove undefined values
+      Object.keys(updateData).forEach(key => {
+        if (updateData[key] === undefined || updateData[key] === '') {
+          delete updateData[key];
+        }
+      });
+
+      const response = await axios.patch('http://localhost:5000/api/users/me', updateData, { headers });
+
+      // Update the user data in the parent component if needed
+      // The user object should be updated from the response
+      console.log('Profile updated successfully:', response.data);
+
       setIsEditing(false);
+
+      // Show success message
+      toast.success('Profile updated successfully!');
+
+      // Update the user data in the AuthContext
+      if (response.data && response.data.profile) {
+        updateUser(response.data.profile);
+        console.log('Profile updated successfully:', response.data.profile);
+      }
     } catch (error) {
       console.error('Error saving user data:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to update profile. Please try again.';
+      toast.error(errorMessage);
     }
   };
 
@@ -51,7 +103,7 @@ const StudentInfo = ({ user }) => {
       firstName: user?.firstName || '',
       lastName: user?.lastName || '',
       email: user?.email || '',
-      studentId: user?.studentId || '',
+      campus_id: user?.campus_id || '',
       department: user?.department || '',
     });
     setIsEditing(false);
@@ -171,8 +223,8 @@ const StudentInfo = ({ user }) => {
                       <label>Student ID</label>
                       <input
                         type="text"
-                        name="studentId"
-                        value={editData.studentId}
+                        name="campus_id"
+                        value={editData.campus_id}
                         onChange={handleChange}
                         className="form-input"
                       />

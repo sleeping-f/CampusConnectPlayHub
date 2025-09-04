@@ -45,10 +45,10 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await axios.post('/api/auth/login', credentials);
       const { token, user } = response.data;
-      
+
       localStorage.setItem('token', token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
+
       setUser(user);
       setIsAuthenticated(true);
       toast.success('Welcome back!');
@@ -64,10 +64,10 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await axios.post('/api/auth/register', userData);
       const { token, user } = response.data;
-      
+
       localStorage.setItem('token', token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
+
       setUser(user);
       setIsAuthenticated(true);
       toast.success('Account created successfully!');
@@ -83,10 +83,10 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await axios.post('/api/auth/google', { token: googleToken });
       const { token, user } = response.data;
-      
+
       localStorage.setItem('token', token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
+
       setUser(user);
       setIsAuthenticated(true);
       toast.success('Welcome!');
@@ -106,6 +106,13 @@ export const AuthProvider = ({ children }) => {
     toast.success('Logged out successfully');
   };
 
+  const updateUser = (updatedUserData) => {
+    setUser(prevUser => ({
+      ...prevUser,
+      ...updatedUserData
+    }));
+  };
+
   const value = {
     user,
     isAuthenticated,
@@ -114,6 +121,7 @@ export const AuthProvider = ({ children }) => {
     register,
     googleLogin,
     logout,
+    updateUser,
   };
 
   return (

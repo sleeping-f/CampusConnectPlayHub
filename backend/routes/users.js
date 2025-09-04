@@ -122,14 +122,24 @@ router.patch(
   body('firstName').optional().isString().isLength({ min: 1, max: 100 }),
   body('lastName').optional().isString().isLength({ min: 1, max: 100 }),
   body('email').optional().isEmail().isLength({ max: 255 }),
+  body('campus_id').optional().isString().isLength({ min: 1, max: 50 }),
   body('department').optional().isString().isLength({ min: 1, max: 100 }),
   async (req, res) => {
     if (sendValidationErrors(req, res)) return;
 
     const id = req.user.id;
-    const { firstName, lastName, email, department } = req.body ?? {};
+    const { firstName, lastName, email, campus_id, department } = req.body ?? {};
+
+    console.log('PATCH /users/me - User ID:', id);
+    console.log('PATCH /users/me - Request body:', req.body);
+    console.log('PATCH /users/me - Database connection:', !!req.db);
 
     try {
+      if (!req.db) {
+        console.error('Database connection not available');
+        return res.status(500).json({ message: 'Database connection not available' });
+      }
+
       const [[current]] = await req.db.execute(
         `SELECT id, role FROM users WHERE id = ?`,
         [id]
@@ -140,8 +150,9 @@ router.patch(
       const params = [];
 
       if (typeof firstName !== 'undefined') { setParts.push('firstName = ?'); params.push(firstName); }
-      if (typeof lastName !== 'undefined')  { setParts.push('lastName = ?');  params.push(lastName);  }
-      if (typeof email !== 'undefined')     { setParts.push('email = ?');     params.push(email);     }
+      if (typeof lastName !== 'undefined') { setParts.push('lastName = ?'); params.push(lastName); }
+      if (typeof email !== 'undefined') { setParts.push('email = ?'); params.push(email); }
+      if (typeof campus_id !== 'undefined') { setParts.push('campus_id = ?'); params.push(campus_id); }
 
       const willUpdateUsers = setParts.length > 0;
       const wantsDeptChange = typeof department !== 'undefined';
@@ -150,36 +161,43 @@ router.patch(
         return res.status(400).json({ message: 'Nothing to update' });
       }
 
-      await req.db.beginTransaction();
+      // Get a connection from the pool for transactions
+      const connection = await req.db.getConnection();
       try {
+        await connection.beginTransaction();
+
         if (willUpdateUsers) {
           const sql = `UPDATE users SET ${setParts.join(', ')} WHERE id = ?`;
           params.push(id);
-          await req.db.execute(sql, params);
+          console.log('Executing SQL:', sql, 'with params:', params);
+          await connection.execute(sql, params);
         }
 
         if (wantsDeptChange && current.role === 'student') {
-          const [sRows] = await req.db.execute(
+          const [sRows] = await connection.execute(
             `SELECT user_id FROM students WHERE user_id = ?`,
             [id]
           );
           if (sRows.length === 0) {
-            await req.db.execute(
+            await connection.execute(
               `INSERT INTO students (user_id, department) VALUES (?, ?)`,
               [id, department]
             );
           } else {
-            await req.db.execute(
+            await connection.execute(
               `UPDATE students SET department = ? WHERE user_id = ?`,
               [department, id]
             );
           }
         }
 
-        await req.db.commit();
+        await connection.commit();
       } catch (txErr) {
-        await req.db.rollback();
+        await connection.rollback();
+        console.error('Transaction error:', txErr);
         throw txErr;
+      } finally {
+        connection.release();
       }
 
       // Re-select with LEFT JOIN
@@ -202,7 +220,8 @@ router.patch(
         return res.status(409).json({ message: 'Email already in use' });
       }
       console.error('PATCH /users/me error:', err);
-      return res.status(500).json({ message: 'Internal server error' });
+      console.error('Error stack:', err.stack);
+      return res.status(500).json({ message: 'Internal server error', error: err.message });
     }
   }
 );
