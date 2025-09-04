@@ -4,6 +4,7 @@ import { FiGrid, FiUsers, FiAward, FiPlay, FiPlus, FiCopy, FiRefreshCw } from 'r
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import TicTacToe from './TicTacToe';
+import RockPaperScissors from './RockPaperScissors';
 import './ArcadeGames.css';
 
 const ArcadeGames = () => {
@@ -199,14 +200,27 @@ const ArcadeGames = () => {
 
             case 'play':
                 if (currentRoom && selectedGame) {
-                    return (
-                        <TicTacToe
-                            room={currentRoom}
-                            game={selectedGame}
-                            user={user}
-                            onLeaveRoom={leaveRoom}
-                        />
-                    );
+                    // Render the appropriate game component based on game type
+                    if (selectedGame.name === 'rock-paper-scissors') {
+                        return (
+                            <RockPaperScissors
+                                room={currentRoom}
+                                game={selectedGame}
+                                user={user}
+                                onLeaveRoom={leaveRoom}
+                            />
+                        );
+                    } else {
+                        // Default to TicTacToe for other games
+                        return (
+                            <TicTacToe
+                                room={currentRoom}
+                                game={selectedGame}
+                                user={user}
+                                onLeaveRoom={leaveRoom}
+                            />
+                        );
+                    }
                 }
                 return (
                     <div className="play-container">

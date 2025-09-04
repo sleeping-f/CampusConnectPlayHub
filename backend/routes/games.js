@@ -107,12 +107,28 @@ router.post('/games/rooms', authenticateToken, async (req, res) => {
             [roomId, userId, 'X']
         );
 
-        // Initialize game state for tic-tac-toe
-        const gameState = {
-            board: Array(9).fill(null),
-            currentPlayer: 'X',
-            gameStatus: 'waiting'
-        };
+        // Initialize game state based on game type
+        let gameState;
+        if (games[0].name === 'rock-paper-scissors') {
+            gameState = {
+                player1Choice: null,
+                player2Choice: null,
+                player1Score: 0,
+                player2Score: 0,
+                currentRound: 1,
+                maxRounds: 15,
+                gameStatus: 'waiting',
+                roundResult: null,
+                gameResult: null
+            };
+        } else {
+            // Default to tic-tac-toe
+            gameState = {
+                board: Array(9).fill(null),
+                currentPlayer: 'X',
+                gameStatus: 'waiting'
+            };
+        }
 
         console.log('Created room:', roomCode, 'with game state:', gameState);
 
@@ -199,7 +215,22 @@ router.post('/games/rooms/:roomCode/join', authenticateToken, async (req, res) =
         if (players[0].count + 1 >= room.max_players) {
             console.log(`Room ${roomCode}: Starting game - room is full`);
             finalGameState.gameStatus = 'playing';
-            finalGameState.currentPlayer = 'X';
+
+            // Set current player based on game type
+            if (room.game_name === 'rock-paper-scissors') {
+                // For RPS, both players can make choices simultaneously
+                finalGameState.currentRound = 1;
+                finalGameState.player1Score = 0;
+                finalGameState.player2Score = 0;
+                finalGameState.player1Choice = null;
+                finalGameState.player2Choice = null;
+                finalGameState.roundResult = null;
+                finalGameState.gameResult = null;
+            } else {
+                // Default to tic-tac-toe
+                finalGameState.currentPlayer = 'X';
+            }
+
             finalStatus = 'playing';
 
             await req.db.execute(
@@ -267,16 +298,19 @@ router.get('/games/rooms/:roomCode', authenticateToken, async (req, res) => {
     }
 });
 
-// Make a move in tic-tac-toe
+// Make a move in any game
 router.post('/games/rooms/:roomCode/move', authenticateToken, async (req, res) => {
     try {
         const { roomCode } = req.params;
-        const { position } = req.body;
+        const { position, choice, playerSymbol } = req.body;
         const userId = req.user.id;
 
-        // Get room details
+        // Get room details with game name
         const [rooms] = await req.db.execute(
-            'SELECT * FROM game_rooms WHERE room_code = ?',
+            `SELECT gr.*, g.name as game_name 
+             FROM game_rooms gr 
+             JOIN games g ON gr.game_id = g.id 
+             WHERE gr.room_code = ?`,
             [roomCode]
         );
 
@@ -303,48 +337,170 @@ router.post('/games/rooms/:roomCode/move', authenticateToken, async (req, res) =
         const player = players[0];
         const gameState = JSON.parse(room.game_state || '{}');
 
-        console.log(`Move attempt - Room: ${roomCode}, User: ${userId}, Current Player: ${gameState.currentPlayer}, Player Symbol: ${player.player_symbol}`);
+        // Handle different game types
+        if (room.game_name === 'rock-paper-scissors') {
+            return await handleRockPaperScissorsMove(req, res, room, gameState, player, choice);
+        } else {
+            // Default to tic-tac-toe
+            return await handleTicTacToeMove(req, res, room, gameState, player, position);
+        }
+    } catch (error) {
+        console.error('Error making move:', error);
+        res.status(500).json({ message: 'Failed to make move' });
+    }
+});
 
-        // Validate move
-        if (gameState.currentPlayer !== player.player_symbol) {
-            console.log(`Move rejected - Not user's turn. Current: ${gameState.currentPlayer}, User: ${player.player_symbol}`);
-            return res.status(400).json({ message: `Not your turn. It's ${gameState.currentPlayer}'s turn, you are ${player.player_symbol}` });
+// Handle Tic Tac Toe moves
+const handleTicTacToeMove = async (req, res, room, gameState, player, position) => {
+    const { roomCode } = req.params;
+    const userId = req.user.id;
+
+    console.log(`Tic Tac Toe move attempt - Room: ${roomCode}, User: ${userId}, Current Player: ${gameState.currentPlayer}, Player Symbol: ${player.player_symbol}`);
+
+    // Validate move
+    if (gameState.currentPlayer !== player.player_symbol) {
+        console.log(`Move rejected - Not user's turn. Current: ${gameState.currentPlayer}, User: ${player.player_symbol}`);
+        return res.status(400).json({ message: `Not your turn. It's ${gameState.currentPlayer}'s turn, you are ${player.player_symbol}` });
+    }
+
+    if (gameState.board[position] !== null) {
+        return res.status(400).json({ message: 'Position already taken' });
+    }
+
+    // Make the move
+    gameState.board[position] = player.player_symbol;
+
+    // Check for win condition
+    const winPatterns = [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
+        [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
+        [0, 4, 8], [2, 4, 6] // diagonals
+    ];
+
+    let winner = null;
+    for (const pattern of winPatterns) {
+        const [a, b, c] = pattern;
+        if (gameState.board[a] && gameState.board[a] === gameState.board[b] && gameState.board[a] === gameState.board[c]) {
+            winner = gameState.board[a];
+            break;
+        }
+    }
+
+    if (winner) {
+        gameState.gameStatus = 'finished';
+        gameState.winner = winner;
+
+        // Find the winner's user ID
+        const [winnerPlayer] = await req.db.execute(
+            'SELECT player_id FROM game_room_players WHERE room_id = ? AND player_symbol = ?',
+            [room.id, winner]
+        );
+
+        const winnerId = winnerPlayer.length > 0 ? winnerPlayer[0].player_id : null;
+
+        // Update room status
+        await req.db.execute(
+            'UPDATE game_rooms SET status = ?, winner_id = ?, game_state = ? WHERE id = ?',
+            ['finished', winnerId, JSON.stringify(gameState), room.id]
+        );
+
+        // Update statistics
+        await updateGameStatistics(room.id, winner, req.db);
+    } else if (gameState.board.every(cell => cell !== null)) {
+        // Draw
+        gameState.gameStatus = 'finished';
+        gameState.winner = 'draw';
+
+        await req.db.execute(
+            'UPDATE game_rooms SET status = ?, game_state = ? WHERE id = ?',
+            ['finished', JSON.stringify(gameState), room.id]
+        );
+
+        // Update statistics for draw
+        await updateGameStatistics(room.id, 'draw', req.db);
+    } else {
+        // Switch player
+        const oldPlayer = gameState.currentPlayer;
+        gameState.currentPlayer = gameState.currentPlayer === 'X' ? 'O' : 'X';
+        console.log(`Switching player from ${oldPlayer} to ${gameState.currentPlayer}`);
+
+        await req.db.execute(
+            'UPDATE game_rooms SET game_state = ? WHERE id = ?',
+            [JSON.stringify(gameState), room.id]
+        );
+    }
+
+    res.json({
+        gameState,
+        winner: gameState.winner,
+        gameStatus: gameState.gameStatus
+    });
+};
+
+// Handle Rock Paper Scissors moves
+const handleRockPaperScissorsMove = async (req, res, room, gameState, player, choice) => {
+    const { roomCode } = req.params;
+    const userId = req.user.id;
+
+    console.log(`Rock Paper Scissors move attempt - Room: ${roomCode}, User: ${userId}, Choice: ${choice}, Player Symbol: ${player.player_symbol}`);
+
+    // Validate choice
+    if (!['rock', 'paper', 'scissors'].includes(choice)) {
+        return res.status(400).json({ message: 'Invalid choice. Must be rock, paper, or scissors.' });
+    }
+
+    const isPlayer1 = player.player_symbol === 'X';
+    const choiceKey = isPlayer1 ? 'player1Choice' : 'player2Choice';
+
+    // Check if player has already made a choice this round
+    if (gameState[choiceKey] !== null) {
+        return res.status(400).json({ message: 'You have already made your choice for this round!' });
+    }
+
+    // Make the choice
+    gameState[choiceKey] = choice;
+
+    // Check if both players have made their choices
+    if (gameState.player1Choice !== null && gameState.player2Choice !== null) {
+        // Determine round winner
+        const result = determineRockPaperScissorsWinner(gameState.player1Choice, gameState.player2Choice);
+        gameState.roundResult = result;
+
+        // Update scores
+        if (result === 'player1') {
+            gameState.player1Score++;
+        } else if (result === 'player2') {
+            gameState.player2Score++;
         }
 
-        if (gameState.board[position] !== null) {
-            return res.status(400).json({ message: 'Position already taken' });
-        }
-
-        // Make the move
-        gameState.board[position] = player.player_symbol;
-
-        // Check for win condition
-        const winPatterns = [
-            [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
-            [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
-            [0, 4, 8], [2, 4, 6] // diagonals
-        ];
-
-        let winner = null;
-        for (const pattern of winPatterns) {
-            const [a, b, c] = pattern;
-            if (gameState.board[a] && gameState.board[a] === gameState.board[b] && gameState.board[a] === gameState.board[c]) {
-                winner = gameState.board[a];
-                break;
-            }
-        }
-
-        if (winner) {
+        // Check for game end conditions
+        if (gameState.player1Score >= 5 || gameState.player2Score >= 5 || gameState.currentRound >= gameState.maxRounds) {
+            // Game finished
             gameState.gameStatus = 'finished';
-            gameState.winner = winner;
+
+            if (gameState.player1Score > gameState.player2Score) {
+                gameState.gameResult = 'player1';
+            } else if (gameState.player2Score > gameState.player1Score) {
+                gameState.gameResult = 'player2';
+            } else {
+                gameState.gameResult = 'draw';
+            }
 
             // Find the winner's user ID
-            const [winnerPlayer] = await req.db.execute(
-                'SELECT player_id FROM game_room_players WHERE room_id = ? AND player_symbol = ?',
-                [room.id, winner]
-            );
-
-            const winnerId = winnerPlayer.length > 0 ? winnerPlayer[0].player_id : null;
+            let winnerId = null;
+            if (gameState.gameResult === 'player1') {
+                const [winnerPlayer] = await req.db.execute(
+                    'SELECT player_id FROM game_room_players WHERE room_id = ? AND player_symbol = ?',
+                    [room.id, 'X']
+                );
+                winnerId = winnerPlayer.length > 0 ? winnerPlayer[0].player_id : null;
+            } else if (gameState.gameResult === 'player2') {
+                const [winnerPlayer] = await req.db.execute(
+                    'SELECT player_id FROM game_room_players WHERE room_id = ? AND player_symbol = ?',
+                    [room.id, 'O']
+                );
+                winnerId = winnerPlayer.length > 0 ? winnerPlayer[0].player_id : null;
+            }
 
             // Update room status
             await req.db.execute(
@@ -353,41 +509,49 @@ router.post('/games/rooms/:roomCode/move', authenticateToken, async (req, res) =
             );
 
             // Update statistics
-            await updateGameStatistics(room.id, winner, req.db);
-        } else if (gameState.board.every(cell => cell !== null)) {
-            // Draw
-            gameState.gameStatus = 'finished';
-            gameState.winner = 'draw';
-
-            await req.db.execute(
-                'UPDATE game_rooms SET status = ?, game_state = ? WHERE id = ?',
-                ['finished', JSON.stringify(gameState), room.id]
-            );
-
-            // Update statistics for draw
-            await updateGameStatistics(room.id, 'draw', req.db);
+            await updateGameStatistics(room.id, gameState.gameResult, req.db);
         } else {
-            // Switch player
-            const oldPlayer = gameState.currentPlayer;
-            gameState.currentPlayer = gameState.currentPlayer === 'X' ? 'O' : 'X';
-            console.log(`Switching player from ${oldPlayer} to ${gameState.currentPlayer}`);
+            // Next round
+            gameState.currentRound++;
+            gameState.player1Choice = null;
+            gameState.player2Choice = null;
+            gameState.roundResult = null;
 
             await req.db.execute(
                 'UPDATE game_rooms SET game_state = ? WHERE id = ?',
                 [JSON.stringify(gameState), room.id]
             );
         }
-
-        res.json({
-            gameState,
-            winner: gameState.winner,
-            gameStatus: gameState.gameStatus
-        });
-    } catch (error) {
-        console.error('Error making move:', error);
-        res.status(500).json({ message: 'Failed to make move' });
+    } else {
+        // Update game state with current choice
+        await req.db.execute(
+            'UPDATE game_rooms SET game_state = ? WHERE id = ?',
+            [JSON.stringify(gameState), room.id]
+        );
     }
-});
+
+    res.json({
+        gameState,
+        gameStatus: gameState.gameStatus
+    });
+};
+
+// Determine Rock Paper Scissors winner
+const determineRockPaperScissorsWinner = (choice1, choice2) => {
+    if (choice1 === choice2) {
+        return 'draw';
+    }
+
+    if (
+        (choice1 === 'rock' && choice2 === 'scissors') ||
+        (choice1 === 'paper' && choice2 === 'rock') ||
+        (choice1 === 'scissors' && choice2 === 'paper')
+    ) {
+        return 'player1';
+    }
+
+    return 'player2';
+};
 
 // Update game statistics
 const updateGameStatistics = async (roomId, result, db) => {
@@ -427,7 +591,7 @@ const updateGameStatistics = async (roomId, result, db) => {
                     'UPDATE game_statistics SET draws = draws + 1, total_games = total_games + 1 WHERE user_id = ? AND game_id = ?',
                     [player_id, gameId]
                 );
-            } else if (result === player_symbol) {
+            } else if (result === player_symbol || (result === 'player1' && player_symbol === 'X') || (result === 'player2' && player_symbol === 'O')) {
                 await db.execute(
                     'UPDATE game_statistics SET wins = wins + 1, total_games = total_games + 1 WHERE user_id = ? AND game_id = ?',
                     [player_id, gameId]
@@ -526,9 +690,12 @@ router.post('/games/rooms/:roomCode/reset', authenticateToken, async (req, res) 
         const { roomCode } = req.params;
         const userId = req.user.id;
 
-        // Get room details
+        // Get room details with game name
         const [rooms] = await req.db.execute(
-            'SELECT * FROM game_rooms WHERE room_code = ?',
+            `SELECT gr.*, g.name as game_name 
+             FROM game_rooms gr 
+             JOIN games g ON gr.game_id = g.id 
+             WHERE gr.room_code = ?`,
             [roomCode]
         );
 
@@ -548,12 +715,28 @@ router.post('/games/rooms/:roomCode/reset', authenticateToken, async (req, res) 
             return res.status(403).json({ message: 'You are not a player in this room' });
         }
 
-        // Reset game state
-        const newGameState = {
-            board: Array(9).fill(null),
-            currentPlayer: 'X',
-            gameStatus: 'playing'
-        };
+        // Reset game state based on game type
+        let newGameState;
+        if (room.game_name === 'rock-paper-scissors') {
+            newGameState = {
+                player1Choice: null,
+                player2Choice: null,
+                player1Score: 0,
+                player2Score: 0,
+                currentRound: 1,
+                maxRounds: 15,
+                gameStatus: 'playing',
+                roundResult: null,
+                gameResult: null
+            };
+        } else {
+            // Default to tic-tac-toe
+            newGameState = {
+                board: Array(9).fill(null),
+                currentPlayer: 'X',
+                gameStatus: 'playing'
+            };
+        }
 
         // Update room status and game state
         await req.db.execute(
