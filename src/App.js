@@ -3,9 +3,11 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster } from 'react-hot-toast';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ChatProvider } from './contexts/ChatContext';
 import AuthPage from './components/auth/AuthPage';
 import Dashboard from './components/features/Dashboard';
 import AdminConsole from './components/features/AdminConsole'; // ⬅️ NEW
+import Chat from './components/features/Chat';
 import './App.css';
 
 // Role-aware guard
@@ -38,48 +40,60 @@ function App() {
   return (
     <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID}>
       <AuthProvider>
-        <Router>
-          <div className="App">
-            <Toaster
-              position="top-right"
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  background: '#363636',
-                  color: '#fff',
-                  fontFamily: 'Inter, sans-serif',
-                },
-              }}
-            />
-
-            <Routes>
-              <Route path="/auth" element={<AuthPage />} />
-
-              {/* student/regular dashboard */}
-              <Route
-                path="/features"
-                element={
-                  <ProtectedRoute>
-                    <DashboardGate />
-                  </ProtectedRoute>
-                }
+        <ChatProvider>
+          <Router>
+            <div className="App">
+              <Toaster
+                position="top-right"
+                toastOptions={{
+                  duration: 4000,
+                  style: {
+                    background: '#363636',
+                    color: '#fff',
+                    fontFamily: 'Inter, sans-serif',
+                  },
+                }}
               />
 
-              {/* admin-only dashboard */}
-              <Route
-                path="/admin"
-                element={
-                  <ProtectedRoute requiredRole="admin">
-                    <AdminConsole />
-                  </ProtectedRoute>
-                }
-              />
+              <Routes>
+                <Route path="/auth" element={<AuthPage />} />
 
-              {/* default */}
-              <Route path="/" element={<Navigate to="/auth" replace />} />
-            </Routes>
-          </div>
-        </Router>
+                {/* student/regular dashboard */}
+                <Route
+                  path="/features"
+                  element={
+                    <ProtectedRoute>
+                      <DashboardGate />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* admin-only dashboard */}
+                <Route
+                  path="/admin"
+                  element={
+                    <ProtectedRoute requiredRole="admin">
+                      <AdminConsole />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* chat */}
+                <Route
+                  path="/chat"
+                  element={
+                    <ProtectedRoute>
+                      <Chat />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* default */}
+                <Route path="/" element={<Navigate to="/auth" replace />} />
+              </Routes>
+            </div>
+          </Router>
+        </ChatProvider>
       </AuthProvider>
     </GoogleOAuthProvider>
   );

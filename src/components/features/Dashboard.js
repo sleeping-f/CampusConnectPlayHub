@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
-import { FiUser, FiCalendar, FiClock, FiSettings, FiLogOut, FiPlus, FiEdit3, FiUsers, FiBookOpen, FiAlertTriangle, FiGrid } from 'react-icons/fi';
+import { FiUser, FiCalendar, FiClock, FiSettings, FiLogOut, FiPlus, FiEdit3, FiUsers, FiBookOpen, FiAlertTriangle, FiGrid, FiMessageCircle } from 'react-icons/fi';
 import StudentInfo from './StudentInfo';
 import RoutineManager from './RoutineManager';
 import FriendFinder from './FriendFinder';
@@ -10,9 +10,11 @@ import ArcadeGames from './ArcadeGames';
 import './Dashboard.css';
 import FeedbackForm from "./FeedbackForm";
 import BugReportForm from "./BugReportForm";
+import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('info');
   const [showRoutineModal, setShowRoutineModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -62,6 +64,15 @@ const Dashboard = () => {
           </motion.h1>
 
           <div className="header-actions">
+            <motion.button
+              className="btn btn-primary"
+              onClick={() => navigate('/chat')}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <FiMessageCircle />
+              Chat
+            </motion.button>
             <motion.button
               className="btn btn-outline"
               onClick={handleLogout}

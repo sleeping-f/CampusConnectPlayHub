@@ -19,6 +19,7 @@ const studyGroupsRoutes = require("./routes/study-groups");
 const membershipsRoutes = require('./routes/memberships');
 const adminRoutes = require('./routes/admin');
 const gamesRoutes = require('./routes/games');
+const chatRoutes = require('./routes/chat');
 
 const app = express();
 
@@ -289,6 +290,51 @@ const initializeDatabase = async (connection) => {
       ) ENGINE=InnoDB;
     `);
 
+    // Create chat_rooms table
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS chat_rooms (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        room_name VARCHAR(100) NULL,
+        type ENUM('direct', 'group') DEFAULT 'direct',
+        created_by INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT fk_chat_room_creator FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB;
+    `);
+
+    // Create chat_room_participants table
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS chat_room_participants (
+        room_id INT NOT NULL,
+        user_id INT NOT NULL,
+        joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (room_id, user_id),
+        CONSTRAINT fk_chat_participant_room FOREIGN KEY (room_id) REFERENCES chat_rooms(id) ON DELETE CASCADE,
+        CONSTRAINT fk_chat_participant_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB;
+    `);
+
+    // Create chat_messages table
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        room_id INT NOT NULL,
+        sender_id INT NOT NULL,
+        message TEXT NOT NULL,
+        message_type ENUM('text', 'image', 'file', 'emoji') DEFAULT 'text',
+        reply_to_id INT NULL,
+        is_edited BOOLEAN DEFAULT FALSE,
+        is_deleted BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT fk_chat_message_room FOREIGN KEY (room_id) REFERENCES chat_rooms(id) ON DELETE CASCADE,
+        CONSTRAINT fk_chat_message_sender FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+        CONSTRAINT fk_chat_message_reply FOREIGN KEY (reply_to_id) REFERENCES chat_messages(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB;
+    `);
+
     // Insert default games
     await connection.execute(`
       INSERT IGNORE INTO games (name, description, max_players) VALUES 
@@ -321,6 +367,7 @@ app.use('/api/study-groups', studyGroupsRoutes);
 app.use('/api/memberships', membershipsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api', gamesRoutes);
+app.use('/api/chat', chatRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'CampusConnectPlayHub API is running', timestamp: new Date().toISOString() });
