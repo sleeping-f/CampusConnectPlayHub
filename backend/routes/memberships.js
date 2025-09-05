@@ -1,11 +1,9 @@
-// backend/routes/memberships.js
+
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { body, validationResult, param } = require('express-validator');
-
 const router = express.Router();
 
-/* ===== JWT auth middleware ===== */
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -25,7 +23,7 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Helper: ensure group exists
+// Ensure group exists
 async function ensureGroup(req, res, group_id) {
   const [rows] = await req.db.execute(
     `SELECT group_id, creator_id FROM study_groups WHERE group_id = ?`,
@@ -56,20 +54,18 @@ router.post(
       const group = await ensureGroup(req, res, group_id);
       if (!group) return;
 
-      // Only students can join
       const [roleRows] = await req.db.execute(`SELECT role FROM users WHERE id = ?`, [me]);
       if (!roleRows.length) return res.status(404).json({ message: 'User not found' });
       if (roleRows[0].role !== 'student') return res.status(403).json({ message: 'Only students can join study groups' });
 
-      // Already a member?
       const [exists] = await req.db.execute(
-        `SELECT 1 FROM memberships WHERE sgroup_id = ? AND student_id = ? LIMIT 1`,
+        `SELECT 1 FROM memberships WHERE sgroup_id = ? AND member_id = ? LIMIT 1`,
         [group_id, me]
       );
       if (exists.length) return res.status(200).json({ message: 'Already a member' });
 
       await req.db.execute(
-        `INSERT INTO memberships (sgroup_id, student_id, date_joined)
+        `INSERT INTO memberships (sgroup_id, member_id, date_joined)
          VALUES (?, ?, NOW())`,
         [group_id, me]
       );
@@ -82,7 +78,7 @@ router.post(
   }
 );
 
-// --- DELETE /api/memberships/leave  (body: { group_id }) ---
+// --- DELETE /api/memberships/leave ---
 router.delete(
   '/leave',
   authenticateToken,
@@ -98,7 +94,7 @@ router.delete(
       const me = req.user.id;
 
       await req.db.execute(
-        `DELETE FROM memberships WHERE sgroup_id = ? AND student_id = ?`,
+        `DELETE FROM memberships WHERE sgroup_id = ? AND member_id = ?`,
         [group_id, me]
       );
 
@@ -119,9 +115,9 @@ router.get(
       const group_id = Number(req.params.groupId);
 
       const [members] = await req.db.execute(
-        `SELECT u.id AS student_id, u.firstName, u.lastName, u.email, u.campus_id, m.date_joined
+        `SELECT u.id AS member_id, u.firstName, u.lastName, u.email, u.campus_id, m.date_joined
          FROM memberships m, users u
-         WHERE m.sgroup_id = ? AND u.id = m.student_id
+         WHERE m.sgroup_id = ? AND u.id = m.member_id
          ORDER BY m.date_joined ASC, u.id ASC`,
         [group_id]
       );
@@ -142,11 +138,11 @@ router.get(
     try {
       const me = req.user.id;
       const [rows] = await req.db.execute(
-        `SELECT sg.group_id, sg.group_name, sg.description, sg.creator_id, sg.date_created,
+        `SELECT sg.group_id, sg.creator_id, sg.group_name, sg.description, sg.date_created,
                 u.firstName, u.lastName, u.email, u.campus_id,
                 m.date_joined
          FROM memberships m, study_groups sg, users u
-         WHERE m.student_id = ?
+         WHERE m.member_id = ?
            AND sg.group_id = m.sgroup_id
            AND u.id = sg.creator_id
          ORDER BY m.date_joined DESC, sg.group_id DESC`,
@@ -170,17 +166,15 @@ router.delete(
       const targetStudentId = Number(req.params.studentId);
       const me = req.user.id;
 
-      // Check creator
       const [g] = await req.db.execute(`SELECT creator_id FROM study_groups WHERE group_id = ?`, [group_id]);
       if (!g.length) return res.status(404).json({ message: 'Study group not found' });
 
-      // Only creator can remove others. Anyone can remove themselves.
       if (me !== targetStudentId && me !== g[0].creator_id) {
         return res.status(403).json({ message: 'Not allowed to remove this member' });
       }
 
       await req.db.execute(
-        `DELETE FROM memberships WHERE sgroup_id = ? AND student_id = ?`,
+        `DELETE FROM memberships WHERE sgroup_id = ? AND member_id = ?`,
         [group_id, targetStudentId]
       );
 
