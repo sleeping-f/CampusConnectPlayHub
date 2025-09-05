@@ -3,7 +3,7 @@ import { FiX, FiCopy, FiRefreshCw, FiUsers, FiTarget } from 'react-icons/fi';
 import axios from 'axios';
 import './RockPaperScissors.css';
 
-const RockPaperScissors = ({ room, game, user, onLeaveRoom }) => {
+const RockPaperScissors = ({ room, game, user, onLeaveRoom, onGameComplete }) => {
     const [gameState, setGameState] = useState({
         player1Choice: null,
         player2Choice: null,
@@ -22,7 +22,7 @@ const RockPaperScissors = ({ room, game, user, onLeaveRoom }) => {
 
     useEffect(() => {
         fetchRoomDetails();
-        const interval = setInterval(fetchRoomDetails, 2000);
+        const interval = setInterval(fetchRoomDetails, 500);
         return () => clearInterval(interval);
     }, [room.roomCode]);
 
@@ -33,13 +33,17 @@ const RockPaperScissors = ({ room, game, user, onLeaveRoom }) => {
             setGameState(response.data.gameState);
             setPlayers(response.data.players);
 
-            // Debug logging
+            // Debug logging and trigger statistics refresh
             if (response.data.gameState.gameStatus === 'finished') {
                 console.log('Game finished:', {
                     winner: response.data.gameState.gameResult,
                     winner_id: response.data.winner_id,
                     gameState: response.data.gameState
                 });
+                // Trigger statistics refresh when game finishes
+                if (onGameComplete) {
+                    onGameComplete();
+                }
             }
         } catch (error) {
             console.error('Error fetching room details:', error);

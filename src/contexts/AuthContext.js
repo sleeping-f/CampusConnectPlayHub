@@ -28,12 +28,32 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  const checkTokenExpiration = (token) => {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Date.now() / 1000;
+      return payload.exp > currentTime;
+    } catch {
+      return false;
+    }
+  };
+
   const checkAuthStatus = async () => {
     try {
+      const token = localStorage.getItem('token');
+      if (token && !checkTokenExpiration(token)) {
+        // Token expired, remove it
+        localStorage.removeItem('token');
+        delete axios.defaults.headers.common['Authorization'];
+        setLoading(false);
+        return;
+      }
+
       const response = await axios.get('/api/auth/me');
       setUser(response.data.user);
       setIsAuthenticated(true);
     } catch (error) {
+      console.error('Auth check failed:', error);
       localStorage.removeItem('token');
       delete axios.defaults.headers.common['Authorization'];
     } finally {
@@ -113,6 +133,26 @@ export const AuthProvider = ({ children }) => {
     }));
   };
 
+  const refreshAuth = async () => {
+    const token = localStorage.getItem('token');
+    if (token && checkTokenExpiration(token)) {
+      try {
+        const response = await axios.get('/api/auth/me');
+        setUser(response.data.user);
+        setIsAuthenticated(true);
+        return true;
+      } catch (error) {
+        console.error('Auth refresh failed:', error);
+        localStorage.removeItem('token');
+        delete axios.defaults.headers.common['Authorization'];
+        setUser(null);
+        setIsAuthenticated(false);
+        return false;
+      }
+    }
+    return false;
+  };
+
   const value = {
     user,
     isAuthenticated,
@@ -122,6 +162,8 @@ export const AuthProvider = ({ children }) => {
     googleLogin,
     logout,
     updateUser,
+    refreshAuth,
+    checkTokenExpiration,
   };
 
   return (

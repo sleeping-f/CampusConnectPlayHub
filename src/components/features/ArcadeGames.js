@@ -8,7 +8,7 @@ import RockPaperScissors from './RockPaperScissors';
 import './ArcadeGames.css';
 
 const ArcadeGames = () => {
-    const { user } = useAuth();
+    const { user, refreshAuth, checkTokenExpiration } = useAuth();
     const [activeTab, setActiveTab] = useState('games');
     const [games, setGames] = useState([]);
     const [statistics, setStatistics] = useState([]);
@@ -17,12 +17,24 @@ const ArcadeGames = () => {
     const [roomCode, setRoomCode] = useState('');
     const [currentRoom, setCurrentRoom] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [statsLoading, setStatsLoading] = useState(false);
     const [error, setError] = useState('');
 
     useEffect(() => {
         fetchGames();
         fetchStatistics();
     }, []);
+
+    // Auto-refresh statistics every 30 seconds
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (user) {
+                fetchStatistics();
+            }
+        }, 30000);
+
+        return () => clearInterval(interval);
+    }, [user]);
 
     const fetchGames = async () => {
         try {
@@ -34,13 +46,38 @@ const ArcadeGames = () => {
         }
     };
 
-    const fetchStatistics = async () => {
+    const fetchStatistics = async (retryCount = 0) => {
+        setStatsLoading(true);
         try {
             const response = await axios.get('/api/games/statistics');
             setStatistics(response.data);
+            setError('');
         } catch (error) {
             console.error('Error fetching statistics:', error);
+
+            if (error.response?.status === 401 || error.response?.status === 403) {
+                // Token expired or invalid
+                const token = localStorage.getItem('token');
+                if (token && !checkTokenExpiration(token)) {
+                    // Token is expired, try to refresh auth
+                    const authRefreshed = await refreshAuth();
+                    if (authRefreshed && retryCount < 1) {
+                        // Retry once after auth refresh
+                        setTimeout(() => fetchStatistics(retryCount + 1), 1000);
+                        return;
+                    }
+                }
+                setError('Session expired. Please refresh the page or log in again.');
+            } else {
+                setError('Failed to load statistics. Please try again.');
+            }
+        } finally {
+            setStatsLoading(false);
         }
+    };
+
+    const refreshStatistics = () => {
+        fetchStatistics();
     };
 
     const fetchLeaderboard = async (gameId) => {
@@ -119,6 +156,13 @@ const ArcadeGames = () => {
         setCurrentRoom(null);
         setSelectedGame(null);
         setActiveTab('games');
+        // Refresh statistics when leaving a game room
+        fetchStatistics();
+    };
+
+    const onGameComplete = () => {
+        // Refresh statistics when a game completes
+        fetchStatistics();
     };
 
     const tabs = [
@@ -167,33 +211,51 @@ const ArcadeGames = () => {
             case 'stats':
                 return (
                     <div className="stats-container">
+                        <div className="stats-header">
+                            <h3>Your Game Statistics</h3>
+                            <button
+                                className="btn-secondary refresh-stats-btn"
+                                onClick={refreshStatistics}
+                                disabled={statsLoading}
+                                title="Refresh Statistics"
+                            >
+                                <FiRefreshCw className={statsLoading ? 'spinning' : ''} />
+                                {statsLoading ? 'Refreshing...' : 'Refresh'}
+                            </button>
+                        </div>
                         <div className="stats-grid">
-                            {statistics.map((stat) => (
-                                <div key={stat.id} className="stat-card">
-                                    <h3>{stat.game_name.replace('-', ' ').toUpperCase()}</h3>
-                                    <div className="stat-numbers">
-                                        <div className="stat-item">
-                                            <span className="stat-value">{stat.wins}</span>
-                                            <span className="stat-label">Wins</span>
+                            {statistics.length > 0 ? (
+                                statistics.map((stat) => (
+                                    <div key={stat.id} className="stat-card">
+                                        <h3>{stat.game_name.replace('-', ' ').toUpperCase()}</h3>
+                                        <div className="stat-numbers">
+                                            <div className="stat-item">
+                                                <span className="stat-value">{stat.wins}</span>
+                                                <span className="stat-label">Wins</span>
+                                            </div>
+                                            <div className="stat-item">
+                                                <span className="stat-value">{stat.losses}</span>
+                                                <span className="stat-label">Losses</span>
+                                            </div>
+                                            <div className="stat-item">
+                                                <span className="stat-value">{stat.draws}</span>
+                                                <span className="stat-label">Draws</span>
+                                            </div>
+                                            <div className="stat-item">
+                                                <span className="stat-value">{stat.total_games}</span>
+                                                <span className="stat-label">Total</span>
+                                            </div>
                                         </div>
-                                        <div className="stat-item">
-                                            <span className="stat-value">{stat.losses}</span>
-                                            <span className="stat-label">Losses</span>
-                                        </div>
-                                        <div className="stat-item">
-                                            <span className="stat-value">{stat.draws}</span>
-                                            <span className="stat-label">Draws</span>
-                                        </div>
-                                        <div className="stat-item">
-                                            <span className="stat-value">{stat.total_games}</span>
-                                            <span className="stat-label">Total</span>
+                                        <div className="win-rate">
+                                            Win Rate: {stat.total_games > 0 ? Math.round((stat.wins / stat.total_games) * 100) : 0}%
                                         </div>
                                     </div>
-                                    <div className="win-rate">
-                                        Win Rate: {stat.total_games > 0 ? Math.round((stat.wins / stat.total_games) * 100) : 0}%
-                                    </div>
+                                ))
+                            ) : (
+                                <div className="no-stats">
+                                    <p>No game statistics yet. Play some games to see your stats!</p>
                                 </div>
-                            ))}
+                            )}
                         </div>
                     </div>
                 );
@@ -208,6 +270,7 @@ const ArcadeGames = () => {
                                 game={selectedGame}
                                 user={user}
                                 onLeaveRoom={leaveRoom}
+                                onGameComplete={onGameComplete}
                             />
                         );
                     } else {
@@ -218,6 +281,7 @@ const ArcadeGames = () => {
                                 game={selectedGame}
                                 user={user}
                                 onLeaveRoom={leaveRoom}
+                                onGameComplete={onGameComplete}
                             />
                         );
                     }

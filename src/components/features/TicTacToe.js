@@ -3,7 +3,7 @@ import { FiX, FiCopy, FiRefreshCw, FiUsers } from 'react-icons/fi';
 import axios from 'axios';
 import './TicTacToe.css';
 
-const TicTacToe = ({ room, game, user, onLeaveRoom }) => {
+const TicTacToe = ({ room, game, user, onLeaveRoom, onGameComplete }) => {
     const [gameState, setGameState] = useState({
         board: Array(9).fill(null),
         currentPlayer: 'X',
@@ -16,7 +16,7 @@ const TicTacToe = ({ room, game, user, onLeaveRoom }) => {
 
     useEffect(() => {
         fetchRoomDetails();
-        const interval = setInterval(fetchRoomDetails, 2000);
+        const interval = setInterval(fetchRoomDetails, 500);
         return () => clearInterval(interval);
     }, [room.roomCode]);
 
@@ -27,13 +27,17 @@ const TicTacToe = ({ room, game, user, onLeaveRoom }) => {
             setGameState(response.data.gameState);
             setPlayers(response.data.players);
 
-            // Debug logging
+            // Debug logging and trigger statistics refresh
             if (response.data.gameState.gameStatus === 'finished') {
                 console.log('Game finished:', {
                     winner: response.data.gameState.winner,
                     winner_id: response.data.winner_id,
                     gameState: response.data.gameState
                 });
+                // Trigger statistics refresh when game finishes
+                if (onGameComplete) {
+                    onGameComplete();
+                }
             }
         } catch (error) {
             console.error('Error fetching room details:', error);
