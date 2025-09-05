@@ -3,6 +3,32 @@ const jwt = require('jsonwebtoken');
 const { body, query, validationResult } = require('express-validator');
 const router = express.Router();
 
+/* ====== ADD: minimal upload wiring for optional profileImage ====== */
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
+const PROFILE_DIR = path.join(__dirname, '..', 'uploads', 'profile');
+if (!fs.existsSync(PROFILE_DIR)) {
+  try { fs.mkdirSync(PROFILE_DIR, { recursive: true }); } catch {}
+}
+const storage = multer.diskStorage({
+  destination: (_, __, cb) => cb(null, PROFILE_DIR),
+  filename: (_, file, cb) => {
+    const ext = path.extname(file.originalname || '.jpg').toLowerCase();
+    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+  }
+});
+const fileFilter = (_, file, cb) => {
+  const ok = /^image\/(png|jpe?g|webp)$/i.test(file.mimetype);
+  cb(ok ? null : new Error('Only PNG/JPG/WEBP allowed'), ok);
+};
+const uploadProfileImage = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 2 * 1024 * 1024 } // 2MB
+}).single('profileImage');
+/* ================================================================ */
+
 // ---------- Auth middleware ----------
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'] || req.headers['Authorization'];
@@ -40,6 +66,8 @@ function shapeProfile(row) {
     department: row.department ?? null,
     createdAt: row.createdAt ?? null,
     updatedAt: row.updatedAt ?? null,
+    // ADD
+    profileImage: row.profileImage ?? null,
   };
 }
 
@@ -53,6 +81,7 @@ router.get('/me', authenticateToken, async (req, res) => {
       SELECT
         u.id, u.firstName, u.lastName, u.email, u.role, u.campus_id,
         u.createdAt, u.updatedAt,
+        u.profileImage,             -- ADD
         s.department
       FROM users u
       LEFT JOIN students s ON s.user_id = u.id
@@ -92,6 +121,7 @@ router.get(
         `
         SELECT
           u.id, u.firstName, u.lastName, u.email, u.campus_id, u.role, u.createdAt,
+          u.profileImage,           -- ADD
           s.department
         FROM users u
         INNER JOIN students s ON s.user_id = u.id
@@ -119,6 +149,11 @@ router.get(
 router.patch(
   '/me',
   authenticateToken,
+  // ADD: optional image first; if provided, req.file is set; text fields still in req.body
+  (req, res, next) => uploadProfileImage(req, res, (err) => {
+    if (err) return res.status(400).json({ message: err.message || 'Invalid image' });
+    next();
+  }),
   body('firstName').optional().isString().isLength({ min: 1, max: 100 }),
   body('lastName').optional().isString().isLength({ min: 1, max: 100 }),
   body('email').optional().isEmail().isLength({ max: 255 }),
@@ -153,6 +188,13 @@ router.patch(
       if (typeof lastName !== 'undefined') { setParts.push('lastName = ?'); params.push(lastName); }
       if (typeof email !== 'undefined') { setParts.push('email = ?'); params.push(email); }
       if (typeof campus_id !== 'undefined') { setParts.push('campus_id = ?'); params.push(campus_id); }
+
+      // ADD: update profileImage if a new file was uploaded
+      if (req.file) {
+        const rel = `/uploads/profile/${req.file.filename}`;
+        setParts.push('profileImage = ?');
+        params.push(rel);
+      }
 
       const willUpdateUsers = setParts.length > 0;
       const wantsDeptChange = typeof department !== 'undefined';
@@ -200,12 +242,13 @@ router.patch(
         connection.release();
       }
 
-      // Re-select with LEFT JOIN
+      // Re-select with LEFT JOIN (include profileImage)
       const [rows] = await req.db.execute(
         `
         SELECT
           u.id, u.firstName, u.lastName, u.email, u.role, u.campus_id,
           u.createdAt, u.updatedAt,
+          u.profileImage,          -- ADD
           s.department
         FROM users u
         LEFT JOIN students s ON s.user_id = u.id

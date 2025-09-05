@@ -66,6 +66,9 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// >>> ADD: serve uploaded images statically (no other changes)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 /* --------------------------- DB: connection pool -------------------- */
 const createDatabasePool = () => {
   try {
@@ -411,4 +414,3 @@ process.on('SIGINT', () => {
   dbPool.end();
   process.exit(0);
 });
-

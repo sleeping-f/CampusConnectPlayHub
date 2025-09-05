@@ -65,6 +65,7 @@ const shapeUser = (r) => ({
   email: r.email,
   campus_id: r.campus_id,
   department: r.department ?? null,
+  profileImage: r.profileImage ?? null, // ADD
 });
 
 /* ===================================================================== */
@@ -221,7 +222,7 @@ router.get('/', requireDb, authenticateToken, async (req, res) => {
     const me = Number(req.user.id);
     const [rows] = await req.db.execute(
       `
-      SELECT u.id, u.firstName, u.lastName, u.email, u.campus_id, s.department, f.date_added
+      SELECT u.id, u.firstName, u.lastName, u.email, u.campus_id, s.department, u.profileImage, f.date_added
       FROM users u, students s, friends f
       WHERE u.id = s.user_id
         AND (
@@ -254,7 +255,7 @@ router.get('/search', requireDb, authenticateToken, async (req, res) => {
 
     const [rows] = await req.db.execute(
       `
-      SELECT u.id, u.firstName, u.lastName, u.email, u.campus_id, s.department
+      SELECT u.id, u.firstName, u.lastName, u.email, u.campus_id, s.department, u.profileImage
       FROM users u, students s, friends f
       WHERE u.id = s.user_id
         AND f.status = 'accepted'
@@ -289,7 +290,7 @@ router.get('/pending', requireDb, authenticateToken, async (req, res) => {
     // incoming → they sent me: (student_id_1 = them, student_id_2 = me)
     const [inRows] = await req.db.execute(
       `
-      SELECT u.id, u.firstName, u.lastName, u.email, u.campus_id, s.department
+      SELECT u.id, u.firstName, u.lastName, u.email, u.campus_id, s.department, u.profileImage
       FROM users u, students s, friends f
       WHERE u.id = s.user_id
         AND f.status = 'pending'
@@ -303,7 +304,7 @@ router.get('/pending', requireDb, authenticateToken, async (req, res) => {
     // outgoing → I sent them: (student_id_1 = me, student_id_2 = them)
     const [outRows] = await req.db.execute(
       `
-      SELECT u.id, u.firstName, u.lastName, u.email, u.campus_id, s.department
+      SELECT u.id, u.firstName, u.lastName, u.email, u.campus_id, s.department, u.profileImage
       FROM users u, students s, friends f
       WHERE u.id = s.user_id
         AND f.status = 'pending'

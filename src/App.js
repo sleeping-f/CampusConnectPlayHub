@@ -8,6 +8,7 @@ import AuthPage from './components/auth/AuthPage';
 import Dashboard from './components/features/Dashboard';
 import AdminConsole from './components/features/AdminConsole'; // ⬅️ NEW
 import Chat from './components/features/Chat';
+
 import './App.css';
 
 // Role-aware guard

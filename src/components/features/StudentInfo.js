@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { FiUser, FiMail, FiHash, FiBookOpen, FiEdit3, FiSave, FiX } from 'react-icons/fi';
+import { FiUser, FiMail, FiHash, FiBookOpen, FiEdit3, FiSave, FiX, FiImage } from 'react-icons/fi';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import './StudentInfo.css';
 import GradientText from '../common/GradientText';
+
+const API_BASE = 'http://localhost:5000';
 
 const StudentInfo = ({ user }) => {
   console.log('User data:', user);
@@ -19,6 +21,11 @@ const StudentInfo = ({ user }) => {
     campus_id: user?.campus_id || '',
     department: user?.department || '',
   });
+
+  // NEW: image state (only used if you pick a new photo)
+  const [newPhoto, setNewPhoto] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (user) {
@@ -36,13 +43,16 @@ const StudentInfo = ({ user }) => {
     if (window.refreshFriendsCount) {
       window.refreshFriendsCount = refreshFriendsCount;
     }
-  }, []);
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   const fetchFriendsCount = async () => {
     try {
       const token = localStorage.getItem('token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const response = await axios.get('http://localhost:5000/api/friends', { headers });
+      const response = await axios.get(`${API_BASE}/api/friends`, { headers });
       setFriendsCount(response.data.friends?.length || 0);
     } catch (error) {
       console.error('Error fetching friends count:', error);
@@ -54,13 +64,30 @@ const StudentInfo = ({ user }) => {
     setIsEditing(true);
   };
 
+  // NEW: pick a photo (optional)
+  const onPickPhoto = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!/^image\/(png|jpe?g|webp)$/i.test(file.type)) {
+      toast.error('Only PNG, JPG, or WEBP images allowed');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Max size is 2MB');
+      return;
+    }
+    setNewPhoto(file);
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+  };
+
   const handleSave = async () => {
     try {
       const token = localStorage.getItem('token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      // Prepare the data to send to the backend
-      const updateData = {
+      const baseFields = {
         firstName: editData.firstName,
         lastName: editData.lastName,
         email: editData.email,
@@ -68,29 +95,41 @@ const StudentInfo = ({ user }) => {
         department: editData.department
       };
 
-      // Remove undefined values
-      Object.keys(updateData).forEach(key => {
-        if (updateData[key] === undefined || updateData[key] === '') {
-          delete updateData[key];
+      if (newPhoto) {
+        // If a new photo was chosen, send multipart/form-data
+        const form = new FormData();
+        Object.entries(baseFields).forEach(([k, v]) => {
+          if (v !== undefined && v !== '') form.append(k, v);
+        });
+        form.append('profileImage', newPhoto);
+
+        const response = await axios.patch(`${API_BASE}/api/users/me`, form, {
+          headers,
+        });
+
+        toast.success('Profile photo updated!');
+        if (response.data && response.data.profile) {
+          updateUser(response.data.profile);
         }
-      });
+      } else {
+        // Otherwise keep your existing JSON PATCH flow
+        const updateData = { ...baseFields };
+        Object.keys(updateData).forEach(key => {
+          if (updateData[key] === undefined || updateData[key] === '') delete updateData[key];
+        });
 
-      const response = await axios.patch('http://localhost:5000/api/users/me', updateData, { headers });
+        const response = await axios.patch(`${API_BASE}/api/users/me`, updateData, { headers });
 
-      // Update the user data in the parent component if needed
-      // The user object should be updated from the response
-      console.log('Profile updated successfully:', response.data);
+        toast.success('Profile updated successfully!');
+        if (response.data && response.data.profile) {
+          updateUser(response.data.profile);
+        }
+      }
 
       setIsEditing(false);
-
-      // Show success message
-      toast.success('Profile updated successfully!');
-
-      // Update the user data in the AuthContext
-      if (response.data && response.data.profile) {
-        updateUser(response.data.profile);
-        console.log('Profile updated successfully:', response.data.profile);
-      }
+      setNewPhoto(null);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
     } catch (error) {
       console.error('Error saving user data:', error);
       const errorMessage = error.response?.data?.message || 'Failed to update profile. Please try again.';
@@ -106,6 +145,10 @@ const StudentInfo = ({ user }) => {
       campus_id: user?.campus_id || '',
       department: user?.department || '',
     });
+    // reset new photo/preview if you cancel
+    setNewPhoto(null);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
     setIsEditing(false);
   };
 
@@ -125,6 +168,13 @@ const StudentInfo = ({ user }) => {
     };
     return roleMap[role] || role;
   };
+
+  // Decide which avatar to show:
+  const currentAvatar = previewUrl
+    ? previewUrl
+    : (user?.profileImage
+        ? (user.profileImage.startsWith('http') ? user.profileImage : `${API_BASE}${user.profileImage}`)
+        : null);
 
   return (
     <div className="student-info">
@@ -174,9 +224,48 @@ const StudentInfo = ({ user }) => {
       <div className="info-content">
         <div className="profile-card">
           <div className="profile-avatar">
-            <div className="avatar-placeholder">
-              {user?.firstName?.charAt(0)?.toUpperCase() || 'U'}
-            </div>
+            {currentAvatar ? (
+              <img src={currentAvatar} alt="Profile" />
+            ) : (
+              <div className="avatar-placeholder">
+                {user?.firstName?.charAt(0)?.toUpperCase() || 'U'}
+              </div>
+            )}
+
+            {isEditing && (
+              <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={onPickPhoto}
+                  style={{ display: 'none' }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <FiImage style={{ marginRight: 6 }} />
+                  Change Photo
+                </button>
+                {newPhoto && (
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => {
+                      setNewPhoto(null);
+                      if (previewUrl) URL.revokeObjectURL(previewUrl);
+                      setPreviewUrl(null);
+                      if (fileInputRef.current) fileInputRef.current.value = '';
+                    }}
+                  >
+                    <FiX style={{ marginRight: 6 }} />
+                    Remove New
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="profile-details">

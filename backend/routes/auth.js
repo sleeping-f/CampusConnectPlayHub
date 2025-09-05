@@ -5,6 +5,34 @@ const { OAuth2Client } = require('google-auth-library');
 const { body, validationResult } = require('express-validator');
 const router = express.Router();
 
+/* ======= ADD: minimal upload setup for profileImage ======= */
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
+
+const PROFILE_DIR = path.join(__dirname, '..', 'uploads', 'profile');
+if (!fs.existsSync(PROFILE_DIR)) {
+  try { fs.mkdirSync(PROFILE_DIR, { recursive: true }); } catch {}
+}
+
+const storage = multer.diskStorage({
+  destination: (_, __, cb) => cb(null, PROFILE_DIR),
+  filename: (_, file, cb) => {
+    const ext = path.extname(file.originalname || '.jpg').toLowerCase();
+    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+  }
+});
+const fileFilter = (_, file, cb) => {
+  const ok = /^image\/(png|jpe?g|webp)$/i.test(file.mimetype);
+  cb(ok ? null : new Error('Only PNG/JPG/WEBP allowed'), ok);
+};
+const uploadProfileImage = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 2 * 1024 * 1024 } // 2MB
+}).single('profileImage');
+/* ========================================================= */
+
 // Google OAuth client
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -41,8 +69,8 @@ const validateLogin = [
   body('password').notEmpty().withMessage('Password is required')
 ];
 
-// Register user
-router.post('/register', validateRegistration, async (req, res) => {
+// Register user (ADD uploadProfileImage before validators)
+router.post('/register', uploadProfileImage, validateRegistration, async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -90,11 +118,14 @@ router.post('/register', validateRegistration, async (req, res) => {
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // insert into users (NOTE: users table has NO department column)
+    // relative path if user uploaded a profileImage
+    const relProfile = req.file ? `/uploads/profile/${req.file.filename}` : null;
+
+    // insert into users (include profileImage)
     const [result] = await req.db.execute(
-      `INSERT INTO users (firstName, lastName, email, password, campus_id, role)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [firstName, lastName, email, hashedPassword, campus_id, role]
+      `INSERT INTO users (firstName, lastName, email, password, campus_id, role, profileImage)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [firstName, lastName, email, hashedPassword, campus_id, role, relProfile]
     );
 
     // insert student row if needed (FK = numeric users.id)
@@ -105,7 +136,7 @@ router.post('/register', validateRegistration, async (req, res) => {
       );
     }
 
-    // read back the joined user
+    // read back the joined user (include profileImage)
     const [[user]] = await req.db.execute(
       `SELECT 
          u.id,
@@ -114,6 +145,7 @@ router.post('/register', validateRegistration, async (req, res) => {
          u.email,
          u.role,
          u.campus_id,
+         u.profileImage,
          s.department
        FROM users u
        LEFT JOIN students s ON s.user_id = u.id
@@ -128,7 +160,7 @@ router.post('/register', validateRegistration, async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    // single, final response (no unreachable code)
+    // single, final response
     return res.status(201).json({
       message: 'User registered successfully',
       token,
@@ -139,7 +171,8 @@ router.post('/register', validateRegistration, async (req, res) => {
         email: user.email,
         campus_id: user.campus_id,
         department: user.department ?? null,
-        role: user.role
+        role: user.role,
+        profileImage: user.profileImage || null
       }
     });
 
@@ -150,7 +183,7 @@ router.post('/register', validateRegistration, async (req, res) => {
 });
 
 
-// Login user
+// Login user (include profileImage)
 router.post('/login', validateLogin, async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -165,7 +198,7 @@ router.post('/login', validateLogin, async (req, res) => {
 
     // 1) Get user by email (NO joins; get password for comparison)
     const [rows] = await req.db.execute(
-      `SELECT id, firstName, lastName, email, password, campus_id, role, createdAt
+      `SELECT id, firstName, lastName, email, password, campus_id, role, createdAt, profileImage
        FROM users
        WHERE email = ?`,
       [email]
@@ -211,7 +244,8 @@ router.post('/login', validateLogin, async (req, res) => {
         email: user.email,
         campus_id: user.campus_id,
         department,
-        role: user.role
+        role: user.role,
+        profileImage: user.profileImage || null
       }
     });
 
@@ -222,7 +256,7 @@ router.post('/login', validateLogin, async (req, res) => {
 });
 
 
-// Google OAuth login
+// Google OAuth login (return profileImage if present)
 router.post('/google', async (req, res) => {
   try {
     const { token } = req.body;
@@ -255,7 +289,7 @@ router.post('/google', async (req, res) => {
         );
       }
     } else {
-      // Create new user (6 columns → 6 values)
+      // Create new user (6 columns → 7 values with googleId; campus_id may be null by your design)
       const [result] = await req.db.execute(
         `INSERT INTO users (firstName, lastName, email, password, campus_id, role, googleId)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -270,7 +304,6 @@ router.post('/google', async (req, res) => {
     }
 
     // If the new/returning user is a student and has no students row yet, you may choose to create one later after collecting department.
-    // For now, just compute department if present:
     let department = null;
     if (user.role === 'student') {
       const [[deptRow]] = await req.db.execute(
@@ -296,7 +329,8 @@ router.post('/google', async (req, res) => {
         email: user.email,
         campus_id: user.campus_id,
         department,
-        role: user.role
+        role: user.role,
+        profileImage: user.profileImage || null
       }
     });
 
@@ -306,15 +340,15 @@ router.post('/google', async (req, res) => {
   }
 });
 
-// Get current user
+// Get current user (include profileImage)
 router.get('/me', authenticateToken, async (req, res) => {
   try {
     // 1) Read from users only
     const [[user]] = await req.db.execute(
-      `SELECT id, firstName, lastName, email, campus_id, role, createdAt
+      `SELECT id, firstName, lastName, email, campus_id, role, createdAt, profileImage
        FROM users
        WHERE id = ?`,
-      [req.user.id]  // <-- you were missing this comma before
+      [req.user.id]
     );
 
     if (!user) {
@@ -340,7 +374,8 @@ router.get('/me', authenticateToken, async (req, res) => {
         campus_id: user.campus_id,
         department,
         role: user.role,
-        createdAt: user.createdAt
+        createdAt: user.createdAt,
+        profileImage: user.profileImage || null
       }
     });
 
