@@ -152,7 +152,7 @@ const initializeDatabase = async (connection) => {
       );
     `);
 
-    // Create friends table
+    // Friends table schema
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS friends (
         student_id_1 INT NOT NULL,
@@ -166,40 +166,47 @@ const initializeDatabase = async (connection) => {
       );
     `);
 
-    // Create study_groups table
+    // Study Groups table schema
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS study_groups (
         group_id INT AUTO_INCREMENT PRIMARY KEY,
+        creator_id INT NOT NULL,
         group_name VARCHAR(100) NOT NULL,
         description TEXT,
-        creator_id INT NOT NULL,
         date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT fk_sg_creator FOREIGN KEY (creator_id) REFERENCES students(user_id) ON DELETE CASCADE
+        CONSTRAINT fk_g_creator FOREIGN KEY (creator_id) REFERENCES students(user_id) ON DELETE CASCADE
       );
     `);
 
-    // Create memberships table
+    // Memberships table schema
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS memberships (
         sgroup_id INT NOT NULL,
-        student_id INT NOT NULL,
+        member_id INT NOT NULL,
         role ENUM('member','creator') DEFAULT 'member',
         date_joined TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT fk_sgm_group FOREIGN KEY (sgroup_id) REFERENCES study_groups(group_id) ON DELETE CASCADE,
-        CONSTRAINT fk_sgm_student FOREIGN KEY (student_id) REFERENCES students(user_id) ON DELETE CASCADE
+        CONSTRAINT fk_m_group FOREIGN KEY (sgroup_id) REFERENCES study_groups(group_id) ON DELETE CASCADE,
+        CONSTRAINT fk_m_member FOREIGN KEY (member_id) REFERENCES students(user_id) ON DELETE CASCADE
       );
     `);
-
+    
+    // Notifications table schema
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS notifications (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
-        title VARCHAR(255) NOT NULL,
+        notification_id INT AUTO_INCREMENT PRIMARY KEY,
+        recipient_id INT NOT NULL,
+        actor_id INT NOT NULL,
+        type ENUM('friend_request_received','friend_request_accepted') NOT NULL,
+        title VARCHAR(100) NOT NULL,
         message TEXT NOT NULL,
-        type ENUM('friend_request','routine_reminder','system','achievement') DEFAULT 'system',
-        isRead BOOLEAN DEFAULT FALSE,
-        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        is_read BOOLEAN NOT NULL DEFAULT FALSE,
+        read_at TIMESTAMP NULL DEFAULT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT fk_n_recipient FOREIGN KEY (recipient_id) REFERENCES students(user_id) ON DELETE CASCADE,
+        CONSTRAINT fk_n_actor FOREIGN KEY (actor_id) REFERENCES students(user_id) ON DELETE CASCADE,
+        UNIQUE KEY uq_once_per_event (type, recipient_id, actor_id),
+        CONSTRAINT chk_not_self CHECK (recipient_id <> actor_id),
+        INDEX idx_inbox (recipient_id, is_read, created_at)
       );
     `);
 
@@ -413,5 +420,6 @@ process.on('SIGINT', () => {
   dbPool.end();
   process.exit(0);
 });
+
 
 
