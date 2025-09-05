@@ -3,7 +3,6 @@ const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const router = express.Router();
 
-// Reuse the same auth middleware pattern as your other routes
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -16,7 +15,6 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Only students can create/join (you keep roles: student, manager, admin)
 const ensureStudent = (req, res, next) => {
   if (req.user.role !== 'student') {
     return res.status(403).json({ message: 'Only students can access study groups' });
@@ -24,7 +22,7 @@ const ensureStudent = (req, res, next) => {
   next();
 };
 
-// Create group
+// Create a group
 router.post('/',
   authenticateToken,
   ensureStudent,
@@ -39,13 +37,12 @@ router.post('/',
     const { name, description } = req.body;
     try {
       const [result] = await req.db.execute(
-        `INSERT INTO study_groups (group_name, description, creator_id) VALUES (?, ?, ?)`,
-        [name, description || null, req.user.id]
+        `INSERT INTO study_groups (creator_id, group_name, description) VALUES (?, ?, ?)`,
+        [req.user.id, name, description || null]
       );
 
-      // auto-add creator as creator
       await req.db.execute(
-        `INSERT INTO memberships (sgroup_id, student_id, role) VALUES (?, ?, 'creator')`,
+        `INSERT INTO memberships (sgroup_id, member_id, role) VALUES (?, ?, 'creator')`,
         [result.insertId, req.user.id]
       );
 
@@ -61,12 +58,12 @@ router.post('/',
   }
 );
 
-// List all groups (basic browse/search)
+// List and search groups
 router.get('/', authenticateToken, async (req, res) => {
   const q = (req.query.q || '').trim();
   try {
     let sql = `SELECT g.*, 
-        EXISTS(SELECT 1 FROM memberships m WHERE m.sgroup_id = g.group_id AND m.student_id = ?) AS isMember
+        EXISTS(SELECT 1 FROM memberships m WHERE m.sgroup_id = g.group_id AND m.member_id = ?) AS isMember
       FROM study_groups g`;
     const args = [req.user.id];
     if (q) {
@@ -82,14 +79,14 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
-// My groups (created or joined)
+// My groups
 router.get('/mine', authenticateToken, async (req, res) => {
   try {
     const [rows] = await req.db.execute(
       `SELECT g.*, m.role AS myRole
        FROM memberships m
        JOIN study_groups g ON g.group_id = m.sgroup_id
-       WHERE m.student_id = ?
+       WHERE m.member_id = ?
        ORDER BY g.date_created DESC`,
       [req.user.id]
     );
@@ -100,12 +97,12 @@ router.get('/mine', authenticateToken, async (req, res) => {
   }
 });
 
-// Join a group (students only)
+// Join a group
 router.post('/:groupId/join', authenticateToken, ensureStudent, async (req, res) => {
   const { groupId } = req.params;
   try {
     await req.db.execute(
-      `INSERT IGNORE INTO memberships (sgroup_id, student_id, role) VALUES (?, ?, 'member')`,
+      `INSERT IGNORE INTO memberships (sgroup_id, member_id, role) VALUES (?, ?, 'member')`,
       [groupId, req.user.id]
     );
     res.json({ success: true, message: 'Joined group' });
@@ -119,7 +116,6 @@ router.post('/:groupId/join', authenticateToken, ensureStudent, async (req, res)
 router.post('/:groupId/leave', authenticateToken, async (req, res) => {
   const { groupId } = req.params;
   try {
-    // prevent creator from leaving if they are the only creator (simple guard)
     const [[creatorCount]] = await req.db.execute(
       `SELECT COUNT(*) AS creators 
        FROM memberships 
@@ -129,7 +125,7 @@ router.post('/:groupId/leave', authenticateToken, async (req, res) => {
     const [[isCreator]] = await req.db.execute(
       `SELECT COUNT(*) AS meCreator 
        FROM memberships 
-       WHERE sgroup_id = ? AND student_id = ? AND role = 'creator'`,
+       WHERE sgroup_id = ? AND member_id = ? AND role = 'creator'`,
       [groupId, req.user.id]
     );
     if (isCreator.meCreator && creatorCount.creators <= 1) {
@@ -137,7 +133,7 @@ router.post('/:groupId/leave', authenticateToken, async (req, res) => {
     }
 
     await req.db.execute(
-      `DELETE FROM memberships WHERE sgroup_id = ? AND student_id = ?`,
+      `DELETE FROM memberships WHERE sgroup_id = ? AND member_id = ?`,
       [groupId, req.user.id]
     );
     res.json({ success: true, message: 'Left group' });
@@ -147,7 +143,7 @@ router.post('/:groupId/leave', authenticateToken, async (req, res) => {
   }
 });
 
-// DELETE a group (creator only)
+// Delete a group (creator only)
 router.delete('/:groupId', authenticateToken, ensureStudent, async (req, res) => {
   const { groupId } = req.params;
   try {
@@ -157,12 +153,10 @@ router.delete('/:groupId', authenticateToken, ensureStudent, async (req, res) =>
     );
     if (!group) return res.status(404).json({ message: 'Group not found' });
 
-    // Only the creator can delete
     if (group.creator_id !== req.user.id) {
       return res.status(403).json({ message: 'Only the creator can delete this group' });
     }
 
-    // memberships.sgroup_id -> study_groups.group_id has ON DELETE CASCADE
     await req.db.execute(`DELETE FROM study_groups WHERE group_id = ?`, [groupId]);
     res.json({ success: true, message: 'Group deleted' });
   } catch (e) {
@@ -171,7 +165,7 @@ router.delete('/:groupId', authenticateToken, ensureStudent, async (req, res) =>
   }
 });
 
-// Group details (members list)
+// Group details and members list
 router.get('/:groupId', authenticateToken, async (req, res) => {
   const { groupId } = req.params;
   try {
@@ -184,7 +178,7 @@ router.get('/:groupId', authenticateToken, async (req, res) => {
     const [members] = await req.db.execute(
       `SELECT u.id, u.firstName, u.lastName, u.email, u.campus_id, m.role
        FROM memberships m
-       JOIN users u ON u.id = m.student_id
+       JOIN users u ON u.id = m.member_id
        WHERE m.sgroup_id = ?
        ORDER BY m.role DESC, u.firstName ASC`,
       [groupId]
