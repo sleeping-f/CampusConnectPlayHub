@@ -180,7 +180,7 @@ export default function StudyGroups({ me }) {
 
   // helpers
   const amMember = (g) => !!g.isMember;
-  const isCreator = (members) => !!members?.some(m => m.student_id === me?.id && m.role === 'creator');
+  const isCreator = (members) => !!members?.some(m => m.member_id === me?.id && m.role === 'creator');
   const creatorMember = (members) => members?.find(m => m.role === 'creator');
 
   return (
@@ -294,7 +294,7 @@ export default function StudyGroups({ me }) {
                 </div>
 
                 <div className="sg-detail-actions">
-                  {isStudent && amMember({ isMember: selected.members?.some(m => m.student_id === me?.id) })}
+                  {isStudent && amMember({ isMember: selected.members?.some(m => m.member_id === me?.id) })}
                   {isStudent && isCreator(selected.members) && (
                     <button className="btn danger" onClick={() => handleDelete(selected.group.group_id)}>Delete</button>
                   )}
@@ -304,7 +304,7 @@ export default function StudyGroups({ me }) {
               <div className="sg-members">
                 <div className="sg-members-title">Members</div>
                 {selected.members?.map(m => (
-                  <div key={m.student_id} className="sg-member">
+                  <div key={m.member_id} className="sg-member">
                     <div className="sg-member-info">
                       <div className="sg-member-name">
                         {m.firstName} {m.lastName} {m.role === 'creator' ? <span className="badge">Creator</span> : null}
@@ -313,13 +313,13 @@ export default function StudyGroups({ me }) {
                     </div>
                     {isCreator(selected.members) && (
                       <button
-                        className={`btn ${m.student_id === me?.id ? '' : 'danger'}`}
-                        onClick={() => (m.student_id === me?.id
+                        className={`btn ${m.member_id === me?.id ? '' : 'danger'}`}
+                        onClick={() => (m.member_id === me?.id
                           ? handleLeave(selected.group.group_id)
-                          : handleKick(selected.group.group_id, m.student_id))}
-                        title={m.student_id === me?.id ? 'Leave group' : 'Remove member'}
+                          : handleKick(selected.group.group_id, m.member_id))}
+                        title={m.member_id === me?.id ? 'Leave group' : 'Remove member'}
                       >
-                        {m.student_id === me?.id ? 'Leave' : 'Remove'}
+                        {m.member_id === me?.id ? 'Leave' : 'Remove'}
                       </button>
                     )}
                   </div>
