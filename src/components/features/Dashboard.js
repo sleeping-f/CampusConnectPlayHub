@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
-import { FiUser, FiCalendar, FiLogOut, FiEdit3, FiUsers, FiBookOpen, FiBell, FiAlertTriangle, FiGrid } from 'react-icons/fi';
+import { FiUser, FiCalendar, FiLogOut, FiEdit3, FiUsers, FiBookOpen, FiBell, FiAlertTriangle, FiGrid, FiMessageCircle } from 'react-icons/fi';
 import StudentInfo from './StudentInfo';
 import RoutineManager from './RoutineManager';
 import FriendFinder from './FriendFinder';
@@ -355,3 +355,4 @@ const BugModal = ({ onClose }) => {
 
 
 export default Dashboard;
+
