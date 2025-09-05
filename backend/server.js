@@ -11,12 +11,13 @@ dotenv.config();
 
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
-const routineRoutes = require('./routes/routines');
-const friendsRoutes = require('./routes/friends');
 const feedbackRoutes = require('./routes/feedback');
 const bugRoutes = require('./routes/bugs');
+const routineRoutes = require('./routes/routines');
+const friendsRoutes = require('./routes/friends');
 const studyGroupsRoutes = require("./routes/study-groups");
 const membershipsRoutes = require('./routes/memberships');
+const notificationsRouter = require('./routes/notifications');
 const adminRoutes = require('./routes/admin');
 const gamesRoutes = require('./routes/games');
 const chatRoutes = require('./routes/chat');
@@ -359,12 +360,13 @@ app.set('trust proxy', 1);
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/routines', routineRoutes);
-app.use('/api/friends', friendsRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/bugs', bugRoutes);
+app.use('/api/routines', routineRoutes);
+app.use('/api/friends', friendsRoutes);
 app.use('/api/study-groups', studyGroupsRoutes);
 app.use('/api/memberships', membershipsRoutes);
+app.use('/api/notifications', notificationsRouter);
 app.use('/api/admin', adminRoutes);
 app.use('/api', gamesRoutes);
 app.use('/api/chat', chatRoutes);
@@ -411,4 +413,5 @@ process.on('SIGINT', () => {
   dbPool.end();
   process.exit(0);
 });
+
 
