@@ -2,8 +2,6 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
 
-
-/* ───────────────────────── JWT auth (fixes Unauthorized) ───────────────────────── */
 const authenticateToken = (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'] || req.headers['Authorization'];
@@ -29,13 +27,11 @@ const authenticateToken = (req, res, next) => {
   }
 };
 
-/* ───────────────────────── helpers ───────────────────────── */
 const requireDb = (req, res, next) => {
   if (!req.db) return res.status(500).json({ message: 'DB connection missing' });
   next();
 };
 
-// both must exist in users & students (students only; no LEFT JOIN)
 async function assertBothStudents(db, a, b) {
   const [[aRow]] = await db.execute(
     `SELECT u.id FROM users u, students s WHERE u.id = s.user_id AND u.id = ?`,
@@ -67,8 +63,7 @@ const shapeUser = (r) => ({
   department: r.department ?? null,
 });
 
-/* ===================================================================== */
-/* 1) --- POST send request ---
+/* --- POST send request ---
    student_id_1 (me) sends a request to student_id_2
    Creates or re-sends with status='pending'
 */
@@ -86,7 +81,6 @@ router.post('/request', requireDb, authenticateToken, async (req, res) => {
 
     await assertBothStudents(req.db, student_id_1, student_id_2);
 
-    // If opposite pending exists (they already sent me), surface that state
     const [[opp]] = await req.db.execute(
       `SELECT status FROM friends WHERE student_id_1 = ? AND student_id_2 = ?`,
       [student_id_2, student_id_1]
@@ -95,8 +89,6 @@ router.post('/request', requireDb, authenticateToken, async (req, res) => {
       return res.status(200).json({ message: 'Incoming request already pending' });
     }
 
-    // Upsert this directional edge to pending
-    // Assumes a unique key on (student_id_1, student_id_2)
     await req.db.execute(
       `INSERT INTO friends (student_id_1, student_id_2, status, date_added)
        VALUES (?, ?, 'pending', NULL)
@@ -104,6 +96,15 @@ router.post('/request', requireDb, authenticateToken, async (req, res) => {
       [student_id_1, student_id_2]
     );
 
+    await req.db.execute(
+      `
+      INSERT IGNORE INTO notifications
+        (recipient_id, actor_id, type, title, message)
+      VALUES (?, ?, 'friend_request_received', 'New Friend Request', 'You received a new friend request.')
+      `,
+      [student_id_2, student_id_1]
+    );
+    
     return res.status(201).json({
       message: 'Friend request sent',
       student_id_1,
@@ -116,13 +117,10 @@ router.post('/request', requireDb, authenticateToken, async (req, res) => {
   }
 });
 
-/* ===================================================================== */
-/* 2) --- PUT respond to request ---
+/* --- PUT respond to request ---
    Accept/decline pending.
-   - Recipient (student_id_2) can ACCEPT or DECLINE an incoming pending request:
-       body: { student_id_1, action: 'accept' | 'decline' }
-   - Sender (student_id_1) can DECLINE (retract) their own pending request:
-       body: { student_id_2, action: 'decline' }
+   - Recipient (student_id_2) can ACCEPT or DECLINE an incoming pending request
+   - Sender (student_id_1) can DECLINE their own pending request
 */
 router.put('/respond', requireDb, authenticateToken, async (req, res) => {
   try {
@@ -143,11 +141,9 @@ router.put('/respond', requireDb, authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'Missing student_id_1 (incoming) or student_id_2 (outgoing)' });
     }
 
-    // validate users exist & are students
     await assertBothStudents(req.db, me, incoming_sender_id || outgoing_recipient_id);
 
     if (incoming_sender_id) {
-      // I am the recipient; they sent me → (student_id_1 = incoming_sender_id, student_id_2 = me)
       const [[row]] = await req.db.execute(
         `SELECT status FROM friends WHERE student_id_1 = ? AND student_id_2 = ?`,
         [incoming_sender_id, me]
@@ -162,6 +158,14 @@ router.put('/respond', requireDb, authenticateToken, async (req, res) => {
            WHERE student_id_1 = ? AND student_id_2 = ? AND status = 'pending'`,
           [incoming_sender_id, me]
         );
+        await req.db.execute(
+          `
+          INSERT IGNORE INTO notifications
+            (recipient_id, actor_id, type, title, message)
+          VALUES (?, ?, 'friend_request_accepted', 'Friend Request Accepted', 'Your friend request was accepted.')
+          `,
+          [incoming_sender_id, me]
+        );
         return res.json({
           message: 'Friend request accepted',
           student_id_1: incoming_sender_id,
@@ -170,7 +174,6 @@ router.put('/respond', requireDb, authenticateToken, async (req, res) => {
         });
       }
 
-      // decline as recipient → delete pending
       await req.db.execute(
         `DELETE FROM friends WHERE student_id_1 = ? AND student_id_2 = ? AND status = 'pending'`,
         [incoming_sender_id, me]
@@ -183,7 +186,6 @@ router.put('/respond', requireDb, authenticateToken, async (req, res) => {
       });
     }
 
-    // Outgoing retract: I am the sender; row must be (student_id_1 = me, student_id_2 = outgoing_recipient_id)
     if (action !== 'decline') {
       return res.status(403).json({ message: 'Senders can only decline (retract) their own pending requests' });
     }
@@ -212,9 +214,7 @@ router.put('/respond', requireDb, authenticateToken, async (req, res) => {
   }
 });
 
-/* ===================================================================== */
-/* 3) --- GET accepted friends (for FriendFinder list) ---
-   Response: { friends: [ { friend: <user>, since: <date|null> } ] }
+/* --- GET accepted friends (for FriendFinder list) ---
 */
 router.get('/', requireDb, authenticateToken, async (req, res) => {
   try {
@@ -241,10 +241,9 @@ router.get('/', requireDb, authenticateToken, async (req, res) => {
   }
 });
 
-/* ===================================================================== */
-/* 3b) --- SEARCH accepted friends ---
+/* --- SEARCH accepted friends ---
    GET /api/friends/search?q=...
-   Returns only accepted friends matching q
+   Returns only accepted friends matching
 */
 router.get('/search', requireDb, authenticateToken, async (req, res) => {
   try {
@@ -277,16 +276,13 @@ router.get('/search', requireDb, authenticateToken, async (req, res) => {
   }
 });
 
-/* ===================================================================== */
-/* 4) --- GET pending requests ---
+/* --- GET pending requests ---
    Returns incoming (I can act) and outgoing (I sent) separately.
-   Resp: { incoming: [users], outgoing: [users] }
 */
 router.get('/pending', requireDb, authenticateToken, async (req, res) => {
   try {
     const me = Number(req.user.id);
 
-    // incoming → they sent me: (student_id_1 = them, student_id_2 = me)
     const [inRows] = await req.db.execute(
       `
       SELECT u.id, u.firstName, u.lastName, u.email, u.campus_id, s.department
@@ -300,7 +296,6 @@ router.get('/pending', requireDb, authenticateToken, async (req, res) => {
       [me]
     );
 
-    // outgoing → I sent them: (student_id_1 = me, student_id_2 = them)
     const [outRows] = await req.db.execute(
       `
       SELECT u.id, u.firstName, u.lastName, u.email, u.campus_id, s.department
@@ -324,10 +319,8 @@ router.get('/pending', requireDb, authenticateToken, async (req, res) => {
   }
 });
 
-/* ===================================================================== */
 /* 5) --- DELETE friend ---
-   Either side can delete an accepted friendship OR a pending edge.
-   Route keeps old param (:friendId) for compatibility.
+   Either side can delete an accepted friendship.
 */
 router.delete('/:friendId(\\d+)', requireDb, authenticateToken, async (req, res) => {
   try {
