@@ -1,4 +1,3 @@
-
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { body, validationResult, param } = require('express-validator');
@@ -187,3 +186,4 @@ router.delete(
 );
 
 module.exports = router;
+
