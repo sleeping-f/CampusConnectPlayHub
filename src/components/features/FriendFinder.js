@@ -241,7 +241,7 @@ const FriendFinder = () => {
       <div className="friend-finder-header">
         <motion.h2 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           <FiUsers className="header-icon" />
-          Friend Management
+          Friends Management
         </motion.h2>
         <p>Connect with fellow students and build your campus network</p>
       </div>
