@@ -73,14 +73,29 @@ const FriendFinder = () => {
   const fetchFriends = useCallback(async () => {
     try {
       setIsLoadingFriends(true);
-      const { data } = await axios.get('/api/friends', { headers: authHeaders() }); // { friends: [{ friend, since }] }
-      const list = (data?.friends || []).map(x => x.friend);
-      setFriends(list);
+      setError(null); // Clear any previous errors
+      console.log('Fetching friends for user:', user?.id, user?.email); // Debug log
+
+      // Use the original endpoint but without custom headers - let axios use global headers
+      const { data } = await axios.get('/api/friends');
+      console.log('Friends response:', data); // Debug log
+
+      // Validate and process the response data
+      if (data && Array.isArray(data.friends)) {
+        const list = data.friends
+          .filter(item => item && item.friend) // Ensure each item has a friend property
+          .map(x => x.friend);
+        setFriends(list);
+      } else {
+        console.warn('Unexpected friends data structure:', data);
+        setFriends([]);
+      }
     } catch (err) {
       const msg = err?.response?.data?.message || 'Failed to load friends';
       setError(msg);
       console.error('GET /api/friends error:', err?.response || err);
       toast.error(msg);
+      setFriends([]); // Clear friends on error
     } finally {
       setIsLoadingFriends(false);
     }
@@ -89,23 +104,41 @@ const FriendFinder = () => {
   const fetchPendingRequests = useCallback(async () => {
     try {
       setIsLoadingRequests(true);
-      const { data } = await axios.get('/api/friends/pending', { headers: authHeaders() }); // { incoming: [...] }
-      setPendingRequests(data?.incoming || []);
+      const { data } = await axios.get('/api/friends/pending'); // { incoming: [...] }
+
+      // Validate and process the response data
+      if (data && Array.isArray(data.incoming)) {
+        setPendingRequests(data.incoming);
+      } else {
+        console.warn('Unexpected pending requests data structure:', data);
+        setPendingRequests([]);
+      }
     } catch (err) {
       const msg = err?.response?.data?.message || 'Failed to load pending requests';
       setError(msg);
       console.error('GET /api/friends/pending error:', err?.response || err);
       toast.error(msg);
+      setPendingRequests([]); // Clear pending requests on error
     } finally {
       setIsLoadingRequests(false);
     }
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    console.log('FriendFinder useEffect triggered, user:', user?.id, user?.email); // Debug log
+    if (!user) {
+      // Clear friends data when user is not available
+      console.log('No user, clearing friends data'); // Debug log
+      setFriends([]);
+      setPendingRequests([]);
+      setSearchResults([]);
+      setError(null);
+      return;
+    }
+    console.log('User available, fetching friends and pending requests'); // Debug log
     fetchFriends();
     fetchPendingRequests();
-  }, [user, fetchFriends, fetchPendingRequests]);
+  }, [user]); // Remove fetchFriends and fetchPendingRequests from dependencies
 
   // 🔒 Block non-students
   if (!user || user.role !== 'student') {
@@ -131,7 +164,6 @@ const FriendFinder = () => {
       try {
         const { data } = await axios.get(ep.url, {
           params: ep.params(q),
-          headers: authHeaders(),
         });
 
         // Now always flat user objects, even if backend returned { friend: {...} }
@@ -181,7 +213,7 @@ const FriendFinder = () => {
   // ------- actions -------
   const sendFriendRequest = async (friendId) => {
     try {
-      await axios.post('/api/friends/request', { student_id_2: friendId }, { headers: authHeaders() });
+      await axios.post('/api/friends/request', { student_id_2: friendId });
       // Mark as pending in the visible list
       setSearchResults(prev => prev.map(r => r.id === friendId ? { ...r, _isPending: true } : r));
       // Refresh pending list
@@ -196,7 +228,7 @@ const FriendFinder = () => {
 
   const respondToFriendRequest = async (friendId, action) => {
     try {
-      await axios.put('/api/friends/respond', { student_id_1: friendId, action }, { headers: authHeaders() }); // 'accept' | 'decline'
+      await axios.put('/api/friends/respond', { student_id_1: friendId, action }); // 'accept' | 'decline'
       if (action === 'accept') {
         await fetchFriends();
         toast.success('Friend request accepted');
@@ -217,7 +249,7 @@ const FriendFinder = () => {
 
   const removeFriend = async (friendId) => {
     try {
-      await axios.delete(`/api/friends/${friendId}`, { headers: authHeaders() });
+      await axios.delete(`/api/friends/${friendId}`);
       setFriends(prev => prev.filter(f => f.id !== friendId));
       // reflect in search results if visible
       setSearchResults(prev => prev.map(r => (r.id === friendId ? { ...r, _isFriend: false } : r)));
