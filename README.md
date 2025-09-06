@@ -38,10 +38,7 @@ A comprehensive campus social platform that connects students through food, gami
 - **Free time slot calculation**
 - **Visual weekly overview**
 
-### 🍕 Food System (Coming Soon)
-- **Khabar Dabar Pre-Order**
-- **Get a Happy Meal** (Student food selling)
-- **Food Buddy Finder**
+
 
 ### 🎮 Gaming & Entertainment (Coming Soon)
 - **Arcade of the Day**
@@ -50,21 +47,17 @@ A comprehensive campus social platform that connects students through food, gami
 - **Campus Coin System**
 - **Leaderboards**
 
-### 📚 Academic Features (Coming Soon)
-- **Study Group Roulette**
-- **Daily Quizzes**
-- **Peer Mentorship**
-- **Book Resource Sharing**
+### 📚 Academic Features 
+-**Create your own Study Group with friends**
 
-### 🏠 Housing (Coming Soon)
-- **Roommate Finder**
-- **Housing Management**
 
-### 💬 Communication (Coming Soon)
+
+
+### 💬 Communication
 - **Real-time Chat**
 - **Group Chat Rooms**
 
-### 📝 Feedback System (Coming Soon)
+### 📝 Feedback System 
 - **Anonymous feedback**
 - **Bug reporting**
 - **Feature requests**
@@ -286,5 +279,6 @@ If you encounter any issues or have questions:
 ---
 
 **Made with ❤️ for the campus community**
+
 
 
