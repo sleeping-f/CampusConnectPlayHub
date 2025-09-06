@@ -40,12 +40,11 @@ A comprehensive campus social platform that connects students through food, gami
 
 
 
-### 🎮 Gaming & Entertainment (Coming Soon)
+### 🎮 Gaming & Entertainment 
 - **Arcade of the Day**
-- **Mini Tournaments**
 - **Achievements and Badges**
-- **Campus Coin System**
 - **Leaderboards**
+- **Statistic**
 
 ### 📚 Academic Features 
 -**Create your own Study Group with friends**
@@ -261,24 +260,9 @@ CampusConnectPlayHub/
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
 
-If you encounter any issues or have questions:
 
-1. Check the [Issues](https://github.com/your-repo/issues) page
-2. Create a new issue with detailed information
-3. Contact the development team
 
-## 🙏 Acknowledgments
-
-- React team for the amazing framework
-- Express.js community for the robust backend framework
-- MySQL team for the reliable database
-- All contributors and testers
-
----
-
-**Made with ❤️ for the campus community**
 
 
 
