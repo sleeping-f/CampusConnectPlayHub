@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
-import { FiUser, FiCalendar, FiClock, FiSettings, FiLogOut, FiPlus, FiEdit3, FiUsers, FiBookOpen, FiAlertTriangle, FiGrid, FiMessageCircle } from 'react-icons/fi';
+import { FiUser, FiCalendar, FiClock, FiSettings, FiLogOut, FiPlus, FiEdit3, FiUsers, FiBookOpen, FiAlertTriangle, FiGrid, FiMessageCircle, FiBell } from 'react-icons/fi';
 import StudentInfo from './StudentInfo';
 import RoutineManager from './RoutineManager';
 import FriendFinder from './FriendFinder';
@@ -11,6 +11,7 @@ import './Dashboard.css';
 import FeedbackForm from "./FeedbackForm";
 import BugReportForm from "./BugReportForm";
 import { useNavigate } from 'react-router-dom';
+import ReceiveNotifications from './ReceiveNotifications'; // ⬅️ ADD
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -30,6 +31,7 @@ const Dashboard = () => {
     { id: 'friends', label: 'Friends', icon: FiUsers },
     { id: 'studyGroups', label: 'Study Groups', icon: FiBookOpen },
     { id: 'arcade', label: 'Arcade', icon: FiGrid },
+    { id: 'notifications', label: 'Notifications', icon: FiBell }, // ⬅️ ADD
   ];
 
   const renderTabContent = () => {
@@ -44,6 +46,8 @@ const Dashboard = () => {
         return <StudyGroups me={user} />;
       case 'arcade':
         return <ArcadeGames />;
+      case 'notifications': // ⬅️ ADD
+        return <ReceiveNotifications />;
       default:
         return <StudentInfo user={user} />;
     }
@@ -195,7 +199,6 @@ const RoutineModal = ({ onClose, user }) => {
     onClose();
   };
 
-
   return (
     <div className="modal-overlay" onClick={onClose}>
       <motion.div
@@ -266,7 +269,6 @@ const RoutineModal = ({ onClose, user }) => {
               />
             </div>
           </div>
-
 
           <div className="form-group">
             <label>Activity</label>

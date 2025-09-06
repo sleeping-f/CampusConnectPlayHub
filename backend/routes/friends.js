@@ -105,6 +105,14 @@ router.post('/request', requireDb, authenticateToken, async (req, res) => {
       [student_id_1, student_id_2]
     );
 
+    /* === ADD: notification → recipient gets "friend_request_received" === */
+    await req.db.execute(
+      `INSERT IGNORE INTO notifications
+         (recipient_id, actor_id, type, title, message)
+       VALUES (?, ?, 'friend_request_received', 'New Friend Request', 'You received a new friend request.')`,
+      [student_id_2, student_id_1]
+    );
+
     return res.status(201).json({
       message: 'Friend request sent',
       student_id_1,
@@ -163,6 +171,15 @@ router.put('/respond', requireDb, authenticateToken, async (req, res) => {
            WHERE student_id_1 = ? AND student_id_2 = ? AND status = 'pending'`,
           [incoming_sender_id, me]
         );
+
+        /* === ADD: notification → original sender gets "friend_request_accepted" === */
+        await req.db.execute(
+          `INSERT IGNORE INTO notifications
+             (recipient_id, actor_id, type, title, message)
+           VALUES (?, ?, 'friend_request_accepted', 'Friend Request Accepted', 'Your friend request was accepted.')`,
+          [incoming_sender_id, me]
+        );
+
         return res.json({
           message: 'Friend request accepted',
           student_id_1: incoming_sender_id,

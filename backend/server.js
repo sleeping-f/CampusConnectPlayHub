@@ -20,6 +20,9 @@ const membershipsRoutes = require('./routes/memberships');
 const adminRoutes = require('./routes/admin');
 const gamesRoutes = require('./routes/games');
 const chatRoutes = require('./routes/chat');
+const notificationsRoutes = require('./routes/notifications');
+
+
 
 const app = express();
 
@@ -66,7 +69,7 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// >>> ADD: serve uploaded images statically (no other changes)
+// serve uploaded images statically (already present)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 /* --------------------------- DB: connection pool -------------------- */
@@ -191,18 +194,23 @@ const initializeDatabase = async (connection) => {
         CONSTRAINT fk_sgm_student FOREIGN KEY (student_id) REFERENCES students(user_id) ON DELETE CASCADE
       );
     `);
-
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS notifications (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
-        title VARCHAR(255) NOT NULL,
+        notification_id INT AUTO_INCREMENT PRIMARY KEY,
+        recipient_id INT NOT NULL,
+        actor_id INT NOT NULL,
+        type ENUM('friend_request_received','friend_request_accepted') NOT NULL,
+        title VARCHAR(100) NOT NULL,
         message TEXT NOT NULL,
-        type ENUM('friend_request','routine_reminder','system','achievement') DEFAULT 'system',
-        isRead BOOLEAN DEFAULT FALSE,
-        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-      );
+        is_read BOOLEAN NOT NULL DEFAULT FALSE,
+        read_at TIMESTAMP NULL DEFAULT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT fk_n_recipient FOREIGN KEY (recipient_id) REFERENCES students(user_id) ON DELETE CASCADE,
+        CONSTRAINT fk_n_actor FOREIGN KEY (actor_id) REFERENCES students(user_id) ON DELETE CASCADE,
+        UNIQUE KEY uq_once_per_event (type, recipient_id, actor_id),
+        CONSTRAINT chk_not_self CHECK (recipient_id <> actor_id),
+        INDEX idx_inbox (recipient_id, is_read, created_at)
+      ) ENGINE=InnoDB;
     `);
 
     await connection.execute(`
@@ -371,6 +379,7 @@ app.use('/api/memberships', membershipsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api', gamesRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'CampusConnectPlayHub API is running', timestamp: new Date().toISOString() });
