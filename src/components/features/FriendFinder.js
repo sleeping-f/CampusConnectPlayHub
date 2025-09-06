@@ -1,4 +1,3 @@
-// src/components/features/FriendFinder.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiSearch, FiUsers, FiMail, FiLoader, FiEye, FiUserPlus, FiCheck, FiX } from 'react-icons/fi';
@@ -15,7 +14,6 @@ const showErr = (err) => {
   return typeof payload === 'string' ? payload : JSON.stringify(payload);
 };
 
-// Always attach Authorization if present
 const authHeaders = () => {
   try {
     const token = localStorage.getItem('token');
@@ -25,8 +23,6 @@ const authHeaders = () => {
   }
 };
 
-// Normalize backend shapes: {results:[...]}, {users:[...]}, {rows:[...]}, plain array
-// Also flatten friend-wrapped rows from /api/friends/search → [{...user}]
 const normalizeResults = (data) => {
   const arr =
     !data ? [] :
@@ -35,13 +31,9 @@ const normalizeResults = (data) => {
           Array.isArray(data.users) ? data.users :
             Array.isArray(data.rows) ? data.rows :
               (Array.isArray(data.data) ? data.data : []);
-
-  // Flatten { friend: {...} } → {...}
   return arr.map(item => (item && item.friend ? item.friend : item));
 };
 
-
-// Try multiple endpoints for search to tolerate slight backend route differences
 const SEARCH_ENDPOINTS = [
   { url: '/api/users/search', params: (q) => ({ q, limit: 20 }) },
   { url: '/api/friends/search', params: (q) => ({ q, limit: 20 }) },
@@ -69,11 +61,10 @@ const FriendFinder = () => {
   // Profile modal
   const [selectedFriend, setSelectedFriend] = useState(null);
 
-  // ------- fetchers -------
   const fetchFriends = useCallback(async () => {
     try {
       setIsLoadingFriends(true);
-      const { data } = await axios.get('/api/friends', { headers: authHeaders() }); // { friends: [{ friend, since }] }
+      const { data } = await axios.get('/api/friends', { headers: authHeaders() });
       const list = (data?.friends || []).map(x => x.friend);
       setFriends(list);
     } catch (err) {
@@ -89,7 +80,7 @@ const FriendFinder = () => {
   const fetchPendingRequests = useCallback(async () => {
     try {
       setIsLoadingRequests(true);
-      const { data } = await axios.get('/api/friends/pending', { headers: authHeaders() }); // { incoming: [...] }
+      const { data } = await axios.get('/api/friends/pending', { headers: authHeaders() });
       setPendingRequests(data?.incoming || []);
     } catch (err) {
       const msg = err?.response?.data?.message || 'Failed to load pending requests';
@@ -107,7 +98,6 @@ const FriendFinder = () => {
     fetchPendingRequests();
   }, [user, fetchFriends, fetchPendingRequests]);
 
-  // 🔒 Block non-students
   if (!user || user.role !== 'student') {
     return (
       <div className="friend-finder-disabled">
@@ -134,10 +124,8 @@ const FriendFinder = () => {
           headers: authHeaders(),
         });
 
-        // Now always flat user objects, even if backend returned { friend: {...} }
         const raw = normalizeResults(data);
 
-        // hide myself, annotate, sort (optional)
         const annotated = raw
           .filter(u => u && u.id !== user?.id)
           .map(u => ({
@@ -149,7 +137,7 @@ const FriendFinder = () => {
         setSearchResults(annotated);
 
         setIsSearching(false);
-        return; // success on this endpoint
+        return;
       } catch (err) {
         const status = err?.response?.status;
         setIsSearching(false);
@@ -178,13 +166,11 @@ const FriendFinder = () => {
     setIsSearching(false);
   };
 
-  // ------- actions -------
+  // Actions
   const sendFriendRequest = async (friendId) => {
     try {
       await axios.post('/api/friends/request', { student_id_2: friendId }, { headers: authHeaders() });
-      // Mark as pending in the visible list
       setSearchResults(prev => prev.map(r => r.id === friendId ? { ...r, _isPending: true } : r));
-      // Refresh pending list
       fetchPendingRequests();
       toast.success('Friend request sent');
     } catch (err) {
@@ -200,7 +186,6 @@ const FriendFinder = () => {
       if (action === 'accept') {
         await fetchFriends();
         toast.success('Friend request accepted');
-        // Refresh friends count in StudentInfo component
         if (window.refreshFriendsCount) {
           window.refreshFriendsCount();
         }
@@ -219,10 +204,8 @@ const FriendFinder = () => {
     try {
       await axios.delete(`/api/friends/${friendId}`, { headers: authHeaders() });
       setFriends(prev => prev.filter(f => f.id !== friendId));
-      // reflect in search results if visible
       setSearchResults(prev => prev.map(r => (r.id === friendId ? { ...r, _isFriend: false } : r)));
       toast.success('Friend removed');
-      // Refresh friends count in StudentInfo component
       if (window.refreshFriendsCount) {
         window.refreshFriendsCount();
       }
@@ -413,7 +396,7 @@ const FriendFinder = () => {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.3 }}
-          className="requests-section"   // was friends-section
+          className="requests-section"
         >
           {isLoadingRequests ? (
             <div style={{ textAlign: 'center', padding: '2rem' }}>
@@ -424,10 +407,10 @@ const FriendFinder = () => {
               <p>No pending requests.</p>
             </div>
           ) : (
-            <div className="requests-grid">   {/* was friends-grid */}
+            <div className="requests-grid">
               {pendingRequests.map((p) => (
-                <div key={p.id} className="request-card">   {/* was friend-card */}
-                  <div className="request-avatar">          {/* was friend-avatar */}
+                <div key={p.id} className="request-card"> 
+                  <div className="request-avatar">
                     {p.profileImage ? (
                       <img src={p.profileImage} alt={`${p.firstName} ${p.lastName}`} />
                     ) : (
@@ -435,14 +418,14 @@ const FriendFinder = () => {
                     )}
                   </div>
 
-                  <div className="request-info">           {/* was friend-info */}
+                  <div className="request-info">
                     <h4>{p.firstName} {p.lastName}</h4>
-                    <p className="request-email">{p.email}</p>                {/* was user-email */}
+                    <p className="request-email">{p.email}</p>
                     {p.campus_id && <p className="request-student-id">Campus ID: {p.campus_id}</p>}  {/* was user-student-id */}
                     {p.department && <p className="request-department">Dept: {p.department}</p>}      {/* was user-department */}
                   </div>
 
-                  <div className="request-actions">         {/* new wrapper for buttons */}
+                  <div className="request-actions">
                     <button
                       className="accept-btn"
                       onClick={() => respondToFriendRequest(p.id, 'accept')}
