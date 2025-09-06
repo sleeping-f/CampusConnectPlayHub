@@ -6,33 +6,44 @@
   
   .sg-header {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
+    gap: 24px;
     margin-bottom: 24px;
     padding-bottom: 16px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   }
   
   .sg-header h2 {
-    font-size: 2.2rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 2.5rem;
     font-weight: 700;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2a6db9 0%, #f1f5f6 100%);
     -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
     background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
     margin: 0;
+  }
+  
+  .sg-header h2 svg {
+    color: #a6dbea;
+    filter: drop-shadow(0 2px 10px rgba(165, 180, 252, 0.35));
   }
   
   /* Search + Create */
   .sg-actions {
-    display: flex;
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) minmax(420px, 2.5fr);
+    gap: 12px;
     align-items: center;
-    gap: 1rem;
-    flex-wrap: wrap;
   }
-  
+
   .sg-search {
-    width: 260px;
+    width: 100%;
     padding: 0.9rem 1rem;
     border: 2px solid rgba(255, 255, 255, 0.12);
     border-radius: 0.9rem;
@@ -42,7 +53,7 @@
     transition: all 0.25s ease;
     backdrop-filter: blur(10px);
   }
-  
+
   .sg-search::placeholder {
     color: #9ca3af;
   }
@@ -54,27 +65,28 @@
     background: rgba(255,255,255,0.1);
   }
   
-  .sg-create {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.12);
-    padding: 0.6rem;
-    border-radius: 0.9rem;
-    backdrop-filter: blur(10px);
-  }
-  
-  .sg-create input {
-    padding: 0.75rem 0.9rem;
-    border: 2px solid rgba(255, 255, 255, 0.12);
-    border-radius: 0.7rem;
-    background: rgba(255, 255, 255, 0.06);
-    color: #9ca3af;
-    font-size: 0.95rem;
-    transition: all 0.25s ease;
-  }
-  
+.sg-create {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr auto;
+  gap: 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  padding: 0.6rem;
+  border-radius: 0.9rem;
+  backdrop-filter: blur(10px);
+}
+
+.sg-create input {
+  width: 100%;
+  padding: 0.75rem 0.9rem;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.7rem;
+  background: rgba(255, 255, 255, 0.06);
+  color: #9ca3af;
+  font-size: 0.95rem;
+  transition: all 0.25s ease;
+}
+
   .sg-create input::placeholder {
     color: #9ca3af;
   }
@@ -86,7 +98,7 @@
     background: rgba(255,255,255,0.1);
   }
   
-  /* Buttons (base) */
+  /* Buttons */
   .btn {
     padding: 0.75rem 1.1rem;
     border: none;
@@ -104,7 +116,6 @@
     background: rgba(255,255,255,0.12);
   }
   
-  /* JOIN = green (use .btn.primary in your JSX for Join/Create) */
   .btn.primary {
     background: linear-gradient(135deg, #10b981 0%, #059669 100%);
     color: #fff;
@@ -187,7 +198,6 @@
     gap: 0.75rem;
   }
   
-  /* ACTION BARS → two-button layout + color mapping */
   .sg-card-actions,
   .sg-detail-actions {
     display: grid;
@@ -195,7 +205,6 @@
     gap: 0.5rem;
   }
   
-  /* Shared sizing for buttons inside action bars */
   .sg-card-actions .btn,
   .sg-detail-actions .btn {
     flex: 1;
@@ -365,14 +374,9 @@
   }
   
   @media (max-width: 768px) {
-    .sg-wrap { padding: 1rem; }
-    .sg-header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
-    .sg-header h2 { font-size: 1.9rem; }
-    .sg-actions { width: 100%; }
-    .sg-search { flex: 1; width: 100%; }
-    .sg-create { width: 100%; flex-wrap: wrap; }
-    .sg-create input { flex: 1 1 220px; }
-    .sg-details { padding: 0.9rem; }
+    .sg-header { gap: 12px; }
+    .sg-actions { grid-template-columns: 1fr; }
+    .sg-create { grid-template-columns: 1fr; }
   }
   
   @media (max-width: 480px) {
