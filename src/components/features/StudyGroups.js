@@ -1,26 +1,21 @@
-// StudyGroups.js
 import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import './StudyGroups.css';
+import { FiBookOpen } from 'react-icons/fi';
 
 /**
  * StudyGroups UI
- * Expects `me` from context/props: { id, role, firstName, lastName, campus_id }
  */
 export default function StudyGroups({ me }) {
   const [loading, setLoading] = useState(false);
   const [groups, setGroups] = useState([]);
   const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState(null); // { group, members: [] }
+  const [selected, setSelected] = useState(null);
   const isStudent = me?.role === 'student';
 
-  // API endpoints aligned with updated backend:
-  // - study_groups.js  -> /api/study-groups
-  // - memberships.js   -> /api/memberships
   const api = useMemo(() => ({
     list: async (q) => {
       const { data } = await axios.get('/api/study-groups', { params: q ? { q } : {} });
-      // data = { groups: [...] }
       return (data?.groups || []).map(g => ({
         ...g,
         isMember: !!g.isMember,
@@ -54,7 +49,7 @@ export default function StudyGroups({ me }) {
       const { data } = await axios.delete(`/api/memberships/${groupId}/members/${studentId}`);
       return data;
     },
-    // wired to backend DELETE /api/study-groups/:groupId
+    
     removeGroup: async (groupId) => {
       const { data } = await axios.delete(`/api/study-groups/${groupId}`);
       return data;
@@ -64,7 +59,6 @@ export default function StudyGroups({ me }) {
   const load = async () => {
     setLoading(true);
     try {
-      // pull list and my groups to compute creator flag
       const [data, mine] = await Promise.all([api.list(query), api.mine()]);
       const creatorSet = new Set(
         (mine || []).filter(g => g.myRole === 'creator').map(g => g.group_id)
@@ -82,11 +76,10 @@ export default function StudyGroups({ me }) {
     }
   };
 
-  useEffect(() => { load(); }, []); // initial
+  useEffect(() => { load(); }, []);
   useEffect(() => {
-    const t = setTimeout(load, 350); // debounce search
+    const t = setTimeout(load, 350);
     return () => clearTimeout(t);
-    // eslint-disable-next-line
   }, [query]);
 
   const [form, setForm] = useState({ name: '', description: '' });
@@ -101,7 +94,6 @@ export default function StudyGroups({ me }) {
       const group = await api.create({ name: form.name.trim(), description: form.description?.trim() || null });
       setForm({ name: '', description: '' });
       await load();
-      // auto-select the newly created group
       if (group?.group_id) {
         const details = await api.details(group.group_id);
         setSelected({ group: details.group, members: details.members });
@@ -124,7 +116,6 @@ export default function StudyGroups({ me }) {
     }
   };
 
-  // auto-select joined group
   const handleJoin = async (groupId) => {
     try {
       await api.join(groupId);
@@ -141,7 +132,6 @@ export default function StudyGroups({ me }) {
     try {
       await api.leave(groupId);
       if (selected?.group?.group_id === groupId) {
-        // fetch full details so members include `role`
         const { group, members } = await api.details(groupId);
         setSelected({ group, members });
       }
@@ -178,7 +168,6 @@ export default function StudyGroups({ me }) {
     }
   };
 
-  // helpers
   const amMember = (g) => !!g.isMember;
   const isCreator = (members) => !!members?.some(m => m.member_id === me?.id && m.role === 'creator');
   const creatorMember = (members) => members?.find(m => m.role === 'creator');
@@ -186,7 +175,7 @@ export default function StudyGroups({ me }) {
   return (
     <div className="sg-wrap">
       <div className="sg-header">
-        <h2>Study Groups</h2>
+      <h2><FiBookOpen /> Study Groups</h2>
         <div className="sg-actions">
           <input
             className="sg-search"
