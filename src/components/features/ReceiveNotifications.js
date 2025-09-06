@@ -89,7 +89,6 @@ export default function ReceiveNotifications() {
   const markAllUnread = async () => {
     try {
       await axios.patch(`/api/notifications/unread-all`);
-      // optimistic UI: flip everything to unread locally
       setItems(prev => prev.map(n => ({ ...n, is_read: 0, read_at: null })));
     } catch (e) {
       console.error(e);
@@ -103,7 +102,6 @@ export default function ReceiveNotifications() {
       {/* Header */}
       <div className="notifications-header">
         <h2><FiBell /> Notifications</h2>
-        <div className="sub">Friend requests & acceptance updates</div>
       </div>
 
 {/* Toolbar */}
@@ -138,7 +136,6 @@ export default function ReceiveNotifications() {
   </div>
 </div>
 
-
       {/* Errors */}
       {err && <div className="notif-error">{err}</div>}
 
@@ -160,8 +157,13 @@ export default function ReceiveNotifications() {
                     ? `You received a new friend request from ${actorName}`
                     : n.type === 'friend_request_accepted'
                     ? `${actorName} accepted your friend request`
-                    : (n.title || n.message || '');
-
+                    : (friendlyTitle || friendlyMessage || '');
+                const friendlyMessage =
+                n.type === 'friend_request_accepted'
+                    ? 'Look, you have got a new friend!'
+                    : n.type === 'friend_request_received'
+                    ? 'This user wants to add you as friend!'
+                    : (n.message || '');
                 return (
                 <li key={n.notification_id} className={`notif-card ${!n.is_read ? 'is-unread' : ''}`}>
                     <div className="notif-left">
@@ -179,7 +181,7 @@ export default function ReceiveNotifications() {
                     </div>
 
                     <div className="title">{friendlyTitle}</div>
-                    <p className="message">{n.message}</p>
+                    <p className="message">{friendlyMessage}</p>
 
                     {!n.is_read && (
                         <div className="notif-actions">
