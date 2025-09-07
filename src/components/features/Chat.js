@@ -282,9 +282,7 @@ const Chat = () => {
                             {/* Message Input */}
                             <div className="chat-input-container">
                                 <form onSubmit={handleSendMessage} className="chat-input-form">
-                                    <button type="button" className="chat-input-btn">
-                                        <FiPaperclip />
-                                    </button>
+
                                     <div className="chat-input-wrapper">
                                         <input
                                             type="text"
@@ -293,13 +291,7 @@ const Chat = () => {
                                             placeholder="Type a message..."
                                             className="chat-input"
                                         />
-                                        <button
-                                            type="button"
-                                            className="chat-input-btn"
-                                            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                                        >
-                                            <FiSmile />
-                                        </button>
+
                                     </div>
                                     <button
                                         type="submit"
