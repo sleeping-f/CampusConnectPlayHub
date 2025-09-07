@@ -38,33 +38,25 @@ A comprehensive campus social platform that connects students through food, gami
 - **Free time slot calculation**
 - **Visual weekly overview**
 
-### 🍕 Food System (Coming Soon)
-- **Khabar Dabar Pre-Order**
-- **Get a Happy Meal** (Student food selling)
-- **Food Buddy Finder**
 
-### 🎮 Gaming & Entertainment (Coming Soon)
+
+### 🎮 Gaming & Entertainment 
 - **Arcade of the Day**
-- **Mini Tournaments**
 - **Achievements and Badges**
-- **Campus Coin System**
 - **Leaderboards**
+- **Statistic**
 
-### 📚 Academic Features (Coming Soon)
-- **Study Group Roulette**
-- **Daily Quizzes**
-- **Peer Mentorship**
-- **Book Resource Sharing**
+### 📚 Academic Features 
+-**Create your own Study Group with friends**
 
-### 🏠 Housing (Coming Soon)
-- **Roommate Finder**
-- **Housing Management**
 
-### 💬 Communication (Coming Soon)
+
+
+### 💬 Communication
 - **Real-time Chat**
 - **Group Chat Rooms**
 
-### 📝 Feedback System (Coming Soon)
+### 📝 Feedback System 
 - **Anonymous feedback**
 - **Bug reporting**
 - **Feature requests**
@@ -268,23 +260,9 @@ CampusConnectPlayHub/
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
 
-If you encounter any issues or have questions:
 
-1. Check the [Issues](https://github.com/your-repo/issues) page
-2. Create a new issue with detailed information
-3. Contact the development team
 
-## 🙏 Acknowledgments
 
-- React team for the amazing framework
-- Express.js community for the robust backend framework
-- MySQL team for the reliable database
-- All contributors and testers
-
----
-
-**Made with ❤️ for the campus community**
 
 
