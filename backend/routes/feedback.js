@@ -17,7 +17,7 @@ function authenticateToken(req, res, next) {
 }
 
 // Debug
-router.get("/test", (req, res) => res.json({ message: "✅ Feedback route is alive!" }));
+router.get("/test", (req, res) => res.json({ message: "Feedback route is working!" }));
 
 // Submit feedback (JWT -> user_id)
 router.post("/", authenticateToken, async (req, res) => {

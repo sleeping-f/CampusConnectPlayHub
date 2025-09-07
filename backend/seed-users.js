@@ -107,13 +107,13 @@ const seedDatabase = async () => {
             database: process.env.DB_NAME || 'campus_connect'
         });
 
-        console.log('✅ Connected to database');
+        console.log('Connected to database');
 
         // Check if users already exist
         const [existingUsers] = await connection.execute('SELECT COUNT(*) as count FROM users');
 
         if (existingUsers[0].count > 0) {
-            console.log('⚠️  Users already exist in database. Skipping seed.');
+            console.log('Users already exist in database. Skipping seed.');
             return;
         }
 
@@ -126,11 +126,11 @@ const seedDatabase = async () => {
         VALUES (?, ?, ?, ?, ?, ?, ?)
       `, [user.firstName, user.lastName, user.email, hashedPassword, user.studentId, user.department, user.role]);
 
-            console.log(`✅ Added user: ${user.firstName} ${user.lastName}`);
+            console.log(`Added user: ${user.firstName} ${user.lastName}`);
         }
 
-        console.log('🎉 Database seeded successfully!');
-        console.log(`📊 Added ${sampleUsers.length} sample users`);
+        console.log('Database seeded successfully!');
+        console.log(`Added ${sampleUsers.length} sample users`);
         console.log('\nSample user credentials:');
         console.log('Email: john.doe@university.edu');
         console.log('Password: password123');

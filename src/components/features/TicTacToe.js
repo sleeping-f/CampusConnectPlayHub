@@ -185,7 +185,7 @@ const TicTacToe = ({ room, game, user, onLeaveRoom, onGameCompletion }) => {
         <div className="tic-tac-toe-container">
             <div className="game-header">
                 <div className="room-info">
-                    <h3>🎮 {game.name.replace('-', ' ').toUpperCase()}</h3>
+                    <h3>{game.name.replace('-', ' ').toUpperCase()}</h3>
                     <div className="room-code-section">
                         <span>Room Code: </span>
                         <span className="code">{room.roomCode}</span>
@@ -227,9 +227,9 @@ const TicTacToe = ({ room, game, user, onLeaveRoom, onGameCompletion }) => {
                         {gameState.gameStatus === 'playing' && (
                             <div className={`turn-badge ${gameState.currentPlayer === getPlayerSymbol() ? 'your-turn' : 'opponent-turn'}`}>
                                 {gameState.currentPlayer === getPlayerSymbol() ? (
-                                    <>🎯 Your Turn ({gameState.currentPlayer})</>
+                                    <>Your Turn ({gameState.currentPlayer})</>
                                 ) : (
-                                    <>⏳ {getCurrentPlayerName()}'s Turn ({gameState.currentPlayer})</>
+                                    <>{getCurrentPlayerName()}'s Turn ({gameState.currentPlayer})</>
                                 )}
                             </div>
                         )}

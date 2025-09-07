@@ -5,14 +5,14 @@ const { OAuth2Client } = require('google-auth-library');
 const { body, validationResult } = require('express-validator');
 const router = express.Router();
 
-/* ======= ADD: minimal upload setup for profileImage ======= */
+/* Profile image upload setup */
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 
 const PROFILE_DIR = path.join(__dirname, '..', 'uploads', 'profile');
 if (!fs.existsSync(PROFILE_DIR)) {
-  try { fs.mkdirSync(PROFILE_DIR, { recursive: true }); } catch {}
+  try { fs.mkdirSync(PROFILE_DIR, { recursive: true }); } catch { }
 }
 
 const storage = multer.diskStorage({
@@ -31,7 +31,7 @@ const uploadProfileImage = multer({
   fileFilter,
   limits: { fileSize: 2 * 1024 * 1024 } // 2MB
 }).single('profileImage');
-/* ========================================================= */
+/* End profile image upload setup */
 
 // Google OAuth client
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -69,7 +69,7 @@ const validateLogin = [
   body('password').notEmpty().withMessage('Password is required')
 ];
 
-// Register user (ADD uploadProfileImage before validators)
+// Register user with profile image upload support
 router.post('/register', uploadProfileImage, validateRegistration, async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -118,17 +118,17 @@ router.post('/register', uploadProfileImage, validateRegistration, async (req, r
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // relative path if user uploaded a profileImage
+    // Get relative path if user uploaded a profile image
     const relProfile = req.file ? `/uploads/profile/${req.file.filename}` : null;
 
-    // insert into users (include profileImage)
+    // Insert user into database with profile image
     const [result] = await req.db.execute(
       `INSERT INTO users (firstName, lastName, email, password, campus_id, role, profileImage)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [firstName, lastName, email, hashedPassword, campus_id, role, relProfile]
     );
 
-    // insert student row if needed (FK = numeric users.id)
+    // Insert student record if user is a student
     if (role === 'student') {
       await req.db.execute(
         `INSERT INTO students (user_id, department) VALUES (?, ?)`,
@@ -136,7 +136,7 @@ router.post('/register', uploadProfileImage, validateRegistration, async (req, r
       );
     }
 
-    // read back the joined user (include profileImage)
+    // Retrieve the created user with profile image
     const [[user]] = await req.db.execute(
       `SELECT 
          u.id,
@@ -153,14 +153,14 @@ router.post('/register', uploadProfileImage, validateRegistration, async (req, r
       [result.insertId]
     );
 
-    // generate JWT with numeric id
+    // Generate JWT token for the user
     const token = jwt.sign(
       { id: user.id, role: user.role, email: user.email },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    // single, final response
+    // Return success response with user data and token
     return res.status(201).json({
       message: 'User registered successfully',
       token,
@@ -183,7 +183,7 @@ router.post('/register', uploadProfileImage, validateRegistration, async (req, r
 });
 
 
-// Login user (include profileImage)
+// Login user and return profile data
 router.post('/login', validateLogin, async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -196,7 +196,7 @@ router.post('/login', validateLogin, async (req, res) => {
 
     const { email, password } = req.body;
 
-    // 1) Get user by email (NO joins; get password for comparison)
+    // Get user by email for password verification
     const [rows] = await req.db.execute(
       `SELECT id, firstName, lastName, email, password, campus_id, role, createdAt, profileImage
        FROM users
@@ -210,13 +210,13 @@ router.post('/login', validateLogin, async (req, res) => {
 
     const user = rows[0];
 
-    // 2) Verify password hash
+    // Verify password hash
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    // 3) If student, fetch department from students table (NO join)
+    // Get department for students
     let department = null;
     if (user.role === 'student') {
       const [[deptRow]] = await req.db.execute(
@@ -226,14 +226,14 @@ router.post('/login', validateLogin, async (req, res) => {
       department = deptRow ? deptRow.department : null;
     }
 
-    // 4) JWT
+    // Generate JWT token
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    // 5) Response (don’t include password)
+    // Return user data without password
     return res.json({
       message: 'Login successful',
       token,
@@ -256,7 +256,7 @@ router.post('/login', validateLogin, async (req, res) => {
 });
 
 
-// Google OAuth login (return profileImage if present)
+// Google OAuth login
 router.post('/google', async (req, res) => {
   try {
     const { token } = req.body;
@@ -289,7 +289,7 @@ router.post('/google', async (req, res) => {
         );
       }
     } else {
-      // Create new user (6 columns → 7 values with googleId; campus_id may be null by your design)
+      // Create new user with Google ID
       const [result] = await req.db.execute(
         `INSERT INTO users (firstName, lastName, email, password, campus_id, role, googleId)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -303,7 +303,7 @@ router.post('/google', async (req, res) => {
       user = created;
     }
 
-    // If the new/returning user is a student and has no students row yet, you may choose to create one later after collecting department.
+    // Get department for student users
     let department = null;
     if (user.role === 'student') {
       const [[deptRow]] = await req.db.execute(
@@ -340,10 +340,10 @@ router.post('/google', async (req, res) => {
   }
 });
 
-// Get current user (include profileImage)
+// Get current user profile
 router.get('/me', authenticateToken, async (req, res) => {
   try {
-    // 1) Read from users only
+    // Get user data from database
     const [[user]] = await req.db.execute(
       `SELECT id, firstName, lastName, email, campus_id, role, createdAt, profileImage
        FROM users
@@ -355,7 +355,7 @@ router.get('/me', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // 2) If student, pick department from students
+    // Get department for student users
     let department = null;
     if (user.role === 'student') {
       const [[deptRow]] = await req.db.execute(
@@ -393,9 +393,9 @@ router.post('/change-password', authenticateToken, [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        message: 'Validation failed', 
-        errors: errors.array() 
+      return res.status(400).json({
+        message: 'Validation failed',
+        errors: errors.array()
       });
     }
 
@@ -435,7 +435,7 @@ router.post('/change-password', authenticateToken, [
   }
 });
 
-// Logout (client-side token removal)
+// Logout endpoint
 router.post('/logout', (req, res) => {
   res.json({ message: 'Logged out successfully' });
 });

@@ -11,7 +11,7 @@ import './Dashboard.css';
 import FeedbackForm from "./FeedbackForm";
 import BugReportForm from "./BugReportForm";
 import { useNavigate } from 'react-router-dom';
-import ReceiveNotifications from './ReceiveNotifications'; // ⬅️ ADD
+import ReceiveNotifications from './ReceiveNotifications';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -31,7 +31,7 @@ const Dashboard = () => {
     { id: 'friends', label: 'Friends', icon: FiUsers },
     { id: 'studyGroups', label: 'Study Groups', icon: FiBookOpen },
     { id: 'arcade', label: 'Arcade', icon: FiGrid },
-    { id: 'notifications', label: 'Notifications', icon: FiBell }, // ⬅️ ADD
+    { id: 'notifications', label: 'Notifications', icon: FiBell },
   ];
 
   const renderTabContent = () => {
@@ -46,7 +46,7 @@ const Dashboard = () => {
         return <StudyGroups me={user} />;
       case 'arcade':
         return <ArcadeGames />;
-      case 'notifications': // ⬅️ ADD
+      case 'notifications':
         return <ReceiveNotifications />;
       default:
         return <StudentInfo user={user} />;
@@ -136,7 +136,7 @@ const Dashboard = () => {
               </motion.button>
               <motion.button
                 className="action-btn"
-                onClick={() => setShowBugModal(true)} // ✅ bug report modal
+                onClick={() => setShowBugModal(true)}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
@@ -194,7 +194,7 @@ const RoutineModal = ({ onClose, user }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // TODO: Save routine to backend
+    // Save routine to backend
     console.log('Saving routine:', routineData);
     onClose();
   };
@@ -329,7 +329,7 @@ const FeedbackModal = ({ onClose }) => {
   );
 };
 
-// Bug Modal Component ✅
+// Bug Modal Component
 const BugModal = ({ onClose }) => {
   return (
     <div className="modal-overlay" onClick={onClose}>

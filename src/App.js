@@ -6,7 +6,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ChatProvider } from './contexts/ChatContext';
 import AuthPage from './components/auth/AuthPage';
 import Dashboard from './components/features/Dashboard';
-import AdminConsole from './components/features/AdminConsole'; // ⬅️ NEW
+import AdminConsole from './components/features/AdminConsole';
 import Chat from './components/features/Chat';
 
 import './App.css';
@@ -18,7 +18,7 @@ const ProtectedRoute = ({ children, requiredRole }) => {
   if (!isAuthenticated) return <Navigate to="/auth" replace />;
 
   if (requiredRole && user?.role !== requiredRole) {
-    // logged in but wrong role → send to main area
+    // logged in but wrong role, send to main area
     return <Navigate to="/features" replace />;
   }
   return children;
@@ -31,10 +31,11 @@ function DashboardGate() {
   return <Dashboard />;
 }
 
+// Future manager dashboard can be added here
 // function DashboardGate(){
 //   const{user}=useAuth();
 //   if (user?.role==='manager') return <Navigate to ="/manager" replace />;
-//   return <Dashboarad />;
+//   return <Dashboard />;
 // }
 
 function App() {

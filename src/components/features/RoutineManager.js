@@ -10,7 +10,7 @@ const RoutineManager = ({ user }) => {
   const [selectedDay, setSelectedDay] = useState('monday');
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  // FIX: correct state name (was foArmData)
+  // Form data state for new routine
   const [formData, setFormData] = useState({
     day: 'monday',
     startTime: '09:00',
@@ -21,7 +21,7 @@ const RoutineManager = ({ user }) => {
   });
   const [submitting, setSubmitting] = useState(false);
 
-  // same auth header pattern you already use in FriendFinder :contentReference[oaicite:4]{index=4}
+  // Helper function to get auth headers from localStorage
   const authHeaders = () => {
     try {
       const t = localStorage.getItem('token');
@@ -57,7 +57,7 @@ const RoutineManager = ({ user }) => {
     }
   };
 
-  // 🔒 Block non-students
+  // Only allow students to use routine management
   if (!user || user.role !== 'student') {
     return (
       <div className="routine-management-disabled">

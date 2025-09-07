@@ -20,10 +20,10 @@ const FeedbackForm = () => {
         message,
       });
 
-      toast.success("✅ Feedback submitted!");
+      toast.success("Feedback submitted successfully!");
       setMessage("");
     } catch (err) {
-      console.error("❌ Feedback error:", err);
+      console.error("Feedback error:", err);
       toast.error("Error submitting feedback.");
     }
   };

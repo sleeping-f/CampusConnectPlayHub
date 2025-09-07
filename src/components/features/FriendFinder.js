@@ -1,4 +1,4 @@
-// src/components/features/FriendFinder.js
+// Friend finder component for searching and managing campus connections
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiSearch, FiUsers, FiMail, FiLoader, FiEye, FiUserPlus, FiCheck, FiX } from 'react-icons/fi';
@@ -15,7 +15,7 @@ const showErr = (err) => {
   return typeof payload === 'string' ? payload : JSON.stringify(payload);
 };
 
-// Always attach Authorization if present
+// Helper function to get auth headers from localStorage
 const authHeaders = () => {
   try {
     const token = localStorage.getItem('token');
@@ -25,8 +25,7 @@ const authHeaders = () => {
   }
 };
 
-// Normalize backend shapes: {results:[...]}, {users:[...]}, {rows:[...]}, plain array
-// Also flatten friend-wrapped rows from /api/friends/search → [{...user}]
+// Handle different response formats from the backend and normalize them into a consistent array
 const normalizeResults = (data) => {
   const arr =
     !data ? [] :
@@ -36,54 +35,54 @@ const normalizeResults = (data) => {
             Array.isArray(data.rows) ? data.rows :
               (Array.isArray(data.data) ? data.data : []);
 
-  // Flatten { friend: {...} } → {...}
+  // Extract friend data from nested objects
   return arr.map(item => (item && item.friend ? item.friend : item));
 };
 
 
-// Try multiple endpoints for search to tolerate slight backend route differences
+// Fallback endpoints in case the primary search route is unavailable
 const SEARCH_ENDPOINTS = [
   { url: '/api/users/search', params: (q) => ({ q, limit: 20 }) },
   { url: '/api/friends/search', params: (q) => ({ q, limit: 20 }) },
-  { url: '/api/users', params: (q) => ({ q, limit: 20 }) }, // final fallback
+  { url: '/api/users', params: (q) => ({ q, limit: 20 }) }, // last resort endpoint
 ];
 
 const FriendFinder = () => {
   const { user } = useAuth();
 
-  // Tabs
+  // Navigation tabs state
   const [activeTab, setActiveTab] = useState('search');
 
-  // Data
+  // Component data state
   const [friends, setFriends] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
 
-  // UI
+  // UI state management
   const [isSearching, setIsSearching] = useState(false);
   const [isLoadingFriends, setIsLoadingFriends] = useState(false);
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
   const [error, setError] = useState(null);
 
-  // Profile modal
+  // Friend profile modal state
   const [selectedFriend, setSelectedFriend] = useState(null);
 
-  // ------- fetchers -------
+  // Data fetching functions
   const fetchFriends = useCallback(async () => {
     try {
       setIsLoadingFriends(true);
-      setError(null); // Clear any previous errors
-      console.log('Fetching friends for user:', user?.id, user?.email); // Debug log
+      setError(null); // Reset error state
+      console.log('Fetching friends for user:', user?.id, user?.email);
 
-      // Use the original endpoint but without custom headers - let axios use global headers
+      // Use the standard friends endpoint
       const { data } = await axios.get('/api/friends');
-      console.log('Friends response:', data); // Debug log
+      console.log('Friends response:', data);
 
-      // Validate and process the response data
+      // Process the friends data from the response
       if (data && Array.isArray(data.friends)) {
         const list = data.friends
-          .filter(item => item && item.friend) // Ensure each item has a friend property
+          .filter(item => item && item.friend) // Only include valid friend objects
           .map(x => x.friend);
         setFriends(list);
       } else {
@@ -95,7 +94,7 @@ const FriendFinder = () => {
       setError(msg);
       console.error('GET /api/friends error:', err?.response || err);
       toast.error(msg);
-      setFriends([]); // Clear friends on error
+      setFriends([]); // Reset friends list on error
     } finally {
       setIsLoadingFriends(false);
     }
@@ -104,9 +103,9 @@ const FriendFinder = () => {
   const fetchPendingRequests = useCallback(async () => {
     try {
       setIsLoadingRequests(true);
-      const { data } = await axios.get('/api/friends/pending'); // { incoming: [...] }
+      const { data } = await axios.get('/api/friends/pending');
 
-      // Validate and process the response data
+      // Process pending friend requests
       if (data && Array.isArray(data.incoming)) {
         setPendingRequests(data.incoming);
       } else {
@@ -118,29 +117,29 @@ const FriendFinder = () => {
       setError(msg);
       console.error('GET /api/friends/pending error:', err?.response || err);
       toast.error(msg);
-      setPendingRequests([]); // Clear pending requests on error
+      setPendingRequests([]); // Reset pending requests on error
     } finally {
       setIsLoadingRequests(false);
     }
   }, []);
 
   useEffect(() => {
-    console.log('FriendFinder useEffect triggered, user:', user?.id, user?.email); // Debug log
+    console.log('FriendFinder useEffect triggered, user:', user?.id, user?.email);
     if (!user) {
       // Clear friends data when user is not available
-      console.log('No user, clearing friends data'); // Debug log
+      console.log('No user, clearing friends data');
       setFriends([]);
       setPendingRequests([]);
       setSearchResults([]);
       setError(null);
       return;
     }
-    console.log('User available, fetching friends and pending requests'); // Debug log
+    console.log('User available, fetching friends and pending requests');
     fetchFriends();
     fetchPendingRequests();
-  }, [user]); // Remove fetchFriends and fetchPendingRequests from dependencies
+  }, [user]); // Only re-run when user changes
 
-  // 🔒 Block non-students
+  // Only allow students to use the friend finder
   if (!user || user.role !== 'student') {
     return (
       <div className="friend-finder-disabled">
@@ -166,10 +165,10 @@ const FriendFinder = () => {
           params: ep.params(q),
         });
 
-        // Now always flat user objects, even if backend returned { friend: {...} }
+        // Normalize user objects from different response formats
         const raw = normalizeResults(data);
 
-        // hide myself, annotate, sort (optional)
+        // Filter out current user and add friend status annotations
         const annotated = raw
           .filter(u => u && u.id !== user?.id)
           .map(u => ({
@@ -181,7 +180,7 @@ const FriendFinder = () => {
         setSearchResults(annotated);
 
         setIsSearching(false);
-        return; // success on this endpoint
+        return; // Successfully found results
       } catch (err) {
         const status = err?.response?.status;
         setIsSearching(false);
@@ -210,13 +209,13 @@ const FriendFinder = () => {
     setIsSearching(false);
   };
 
-  // ------- actions -------
+  // Friend management actions
   const sendFriendRequest = async (friendId) => {
     try {
       await axios.post('/api/friends/request', { student_id_2: friendId });
-      // Mark as pending in the visible list
+      // Update the search results to show pending status
       setSearchResults(prev => prev.map(r => r.id === friendId ? { ...r, _isPending: true } : r));
-      // Refresh pending list
+      // Reload pending requests
       fetchPendingRequests();
       toast.success('Friend request sent');
     } catch (err) {
@@ -228,11 +227,11 @@ const FriendFinder = () => {
 
   const respondToFriendRequest = async (friendId, action) => {
     try {
-      await axios.put('/api/friends/respond', { student_id_1: friendId, action }); // 'accept' | 'decline'
+      await axios.put('/api/friends/respond', { student_id_1: friendId, action });
       if (action === 'accept') {
         await fetchFriends();
         toast.success('Friend request accepted');
-        // Refresh friends count in StudentInfo component
+        // Update friends count in other components
         if (window.refreshFriendsCount) {
           window.refreshFriendsCount();
         }
@@ -251,10 +250,10 @@ const FriendFinder = () => {
     try {
       await axios.delete(`/api/friends/${friendId}`);
       setFriends(prev => prev.filter(f => f.id !== friendId));
-      // reflect in search results if visible
+      // Update search results to reflect the change
       setSearchResults(prev => prev.map(r => (r.id === friendId ? { ...r, _isFriend: false } : r)));
       toast.success('Friend removed');
-      // Refresh friends count in StudentInfo component
+      // Update friends count in other components
       if (window.refreshFriendsCount) {
         window.refreshFriendsCount();
       }
@@ -281,7 +280,7 @@ const FriendFinder = () => {
       {/* Error */}
       {error && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="error-message">
-          <p>⚠️ {error}</p>
+          <p>{error}</p>
           <button onClick={() => setError(null)}>Dismiss</button>
         </motion.div>
       )}

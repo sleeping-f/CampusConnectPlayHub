@@ -21,7 +21,7 @@ const FriendProfile = ({ friend, onClose, onBack }) => {
       setIsLoadingRoutines(true);
       const token = localStorage.getItem('token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      // ✅ call the dedicated endpoint that returns routines by USER id
+      // Call the dedicated endpoint that returns routines by USER id
       const response = await axios.get(`/api/routines/user/${friend.id}`, { headers });
       setRoutines(response.data.routines || []);
     } catch (error) {

@@ -9,7 +9,7 @@ const path = require('path');
 const multer = require('multer');
 const PROFILE_DIR = path.join(__dirname, '..', 'uploads', 'profile');
 if (!fs.existsSync(PROFILE_DIR)) {
-  try { fs.mkdirSync(PROFILE_DIR, { recursive: true }); } catch {}
+  try { fs.mkdirSync(PROFILE_DIR, { recursive: true }); } catch { }
 }
 const storage = multer.diskStorage({
   destination: (_, __, cb) => cb(null, PROFILE_DIR),
@@ -66,7 +66,7 @@ function shapeProfile(row) {
     department: row.department ?? null,
     createdAt: row.createdAt ?? null,
     updatedAt: row.updatedAt ?? null,
-    // ADD
+    // Include profile image
     profileImage: row.profileImage ?? null,
   };
 }
@@ -149,7 +149,7 @@ router.get(
 router.patch(
   '/me',
   authenticateToken,
-  // ADD: optional image first; if provided, req.file is set; text fields still in req.body
+  // Handle optional profile image upload
   (req, res, next) => uploadProfileImage(req, res, (err) => {
     if (err) return res.status(400).json({ message: err.message || 'Invalid image' });
     next();
@@ -189,7 +189,7 @@ router.patch(
       if (typeof email !== 'undefined') { setParts.push('email = ?'); params.push(email); }
       if (typeof campus_id !== 'undefined') { setParts.push('campus_id = ?'); params.push(campus_id); }
 
-      // ADD: update profileImage if a new file was uploaded
+      // Update profile image if a new file was uploaded
       if (req.file) {
         const rel = `/uploads/profile/${req.file.filename}`;
         setParts.push('profileImage = ?');

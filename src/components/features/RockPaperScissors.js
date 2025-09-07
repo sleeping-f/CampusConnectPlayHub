@@ -146,9 +146,9 @@ const RockPaperScissors = ({ room, game, user, onLeaveRoom, onGameCompletion }) 
                 const hasPlayer2Choice = gameState.player2Choice !== null;
 
                 if (isPlayer1 && !hasPlayer1Choice) {
-                    return '🎯 Your turn - Choose your weapon!';
+                    return 'Your turn - Choose your weapon!';
                 } else if (!isPlayer1 && !hasPlayer2Choice) {
-                    return '🎯 Your turn - Choose your weapon!';
+                    return 'Your turn - Choose your weapon!';
                 } else {
                     return '⏳ Waiting for opponent to choose...';
                 }
@@ -255,7 +255,7 @@ const RockPaperScissors = ({ room, game, user, onLeaveRoom, onGameCompletion }) 
         <div className="rock-paper-scissors-container">
             <div className="game-header">
                 <div className="room-info">
-                    <h3>🎮 {game.name.replace('-', ' ').toUpperCase()}</h3>
+                    <h3>{game.name.replace('-', ' ').toUpperCase()}</h3>
                     <div className="room-code-section">
                         <span>Room Code: </span>
                         <span className="code">{room.roomCode}</span>

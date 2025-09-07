@@ -65,7 +65,7 @@ const shapeUser = (r) => ({
   email: r.email,
   campus_id: r.campus_id,
   department: r.department ?? null,
-  profileImage: r.profileImage ?? null, // ADD
+  profileImage: r.profileImage ?? null, // Include profile image
 });
 
 /* ===================================================================== */

@@ -281,7 +281,7 @@ const ArcadeGames = () => {
     return (
         <div className="arcade-games-container">
             <div className="arcade-header">
-                <h2>🎮 ARCADE GAMES</h2>
+                <h2>ARCADE GAMES</h2>
                 <p>Challenge your friends and climb the leaderboards in our gaming universe!</p>
             </div>
 

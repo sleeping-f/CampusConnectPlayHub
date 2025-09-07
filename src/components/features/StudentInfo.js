@@ -22,7 +22,7 @@ const StudentInfo = ({ user }) => {
     department: user?.department || '',
   });
 
-  // NEW: image state (only used if you pick a new photo)
+  // Image state for profile photo upload
   const [newPhoto, setNewPhoto] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const fileInputRef = useRef(null);
@@ -64,7 +64,7 @@ const StudentInfo = ({ user }) => {
     setIsEditing(true);
   };
 
-  // NEW: pick a photo (optional)
+  // Handle photo selection
   const onPickPhoto = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -173,8 +173,8 @@ const StudentInfo = ({ user }) => {
   const currentAvatar = previewUrl
     ? previewUrl
     : (user?.profileImage
-        ? (user.profileImage.startsWith('http') ? user.profileImage : `${API_BASE}${user.profileImage}`)
-        : null);
+      ? (user.profileImage.startsWith('http') ? user.profileImage : `${API_BASE}${user.profileImage}`)
+      : null);
 
   return (
     <div className="student-info">

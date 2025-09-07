@@ -1,4 +1,4 @@
-// server.js
+// Main server file for CampusConnectPlayHub backend
 const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -26,7 +26,7 @@ const notificationsRoutes = require('./routes/notifications');
 
 const app = express();
 
-/* ------------------------- CORS: PERMISSIVE FOR DEV ------------------------- */
+/* CORS configuration for development */
 const corsOptions = {
   origin: (origin, cb) => cb(null, true),
   credentials: true,
@@ -38,14 +38,14 @@ app.use((req, res, next) => {
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   return next();
 });
-/* --------------------------------------------------------------------------- */
+/* End CORS configuration */
 
 app.use(helmet({ crossOriginResourcePolicy: false, crossOriginEmbedderPolicy: false }));
 
 // Create rate limiter but exclude auth routes
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // Allow 1000 requests per 15 minutes (much more generous for development)
+  max: 1000, // Allow 1000 requests per 15 minutes for development
   message: 'Too many requests, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -56,7 +56,7 @@ const limiter = rateLimit({
 });
 
 // Apply rate limiter to all routes except auth
-// TEMPORARILY DISABLED FOR DEVELOPMENT - UNCOMMENT FOR PRODUCTION
+// Rate limiting disabled for development - enable for production
 /*
 app.use((req, res, next) => {
   if (req.path.startsWith('/api/auth/')) {
@@ -69,10 +69,10 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// serve uploaded images statically (already present)
+// Serve uploaded images statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-/* --------------------------- DB: connection pool -------------------- */
+/* Database connection pool setup */
 const createDatabasePool = () => {
   try {
     const pool = mysql.createPool({
@@ -87,10 +87,10 @@ const createDatabasePool = () => {
       timeout: 60000,
       reconnect: true
     });
-    console.log('✅ Database pool created successfully');
+    console.log('Database pool created successfully');
     return pool;
   } catch (error) {
-    console.error('❌ Database pool creation failed:', error);
+    console.error('Database pool creation failed:', error);
     process.exit(1);
   }
 };
@@ -353,9 +353,9 @@ const initializeDatabase = async (connection) => {
       ('rock-paper-scissors', 'Rock Paper Scissors - First to 5 wins!', 2)
     `);
 
-    console.log('✅ Database tables initialized successfully');
+    console.log('Database tables initialized successfully');
   } catch (error) {
-    console.error('❌ Database initialization failed:', error);
+    console.error('Database initialization failed:', error);
     throw error;
   }
 };
@@ -401,12 +401,12 @@ const startServer = async () => {
     await initializeDatabase(dbPool);
 
     app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📱 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
-      console.log(`🔗 API URL: http://localhost:${PORT}`);
+      console.log(`Server running on port ${PORT}`);
+      console.log(`Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+      console.log(`API URL: http://localhost:${PORT}`);
     });
   } catch (error) {
-    console.error('❌ Server startup failed:', error);
+    console.error('Server startup failed:', error);
     process.exit(1);
   }
 };
