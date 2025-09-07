@@ -49,14 +49,12 @@ const RegisterForm = () => {
   ];
 
   const roleIdLabel = (role) => {
-    if (role === 'admin')   return 'Admin ID';
-    if (role === 'manager') return 'Manager ID';
+    if (role === 'admin') return 'Admin ID';
     return 'Student ID';
   };
 
   const roles = [
     { value: 'student', label: 'Student' },
-    { value: 'manager', label: 'Manager' },
     { value: 'admin', label: 'Administrator' }
   ];
 
@@ -183,7 +181,7 @@ const RegisterForm = () => {
             required
             aria-label="Select user role"
           >
-          <option value="" disabled hidden>User</option>
+            <option value="" disabled hidden>User</option>
             <optgroup label="User">
               {roles.map(role => (
                 <option key={role.value} value={role.value}>

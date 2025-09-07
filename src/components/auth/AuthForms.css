@@ -46,6 +46,37 @@
   opacity: .75;
 }
 
+/* Select specific styling */
+.form-input select,
+select.form-input {
+  background: white;
+  color: #1a1a1a;
+  opacity: 1;
+}
+
+.form-input option {
+  background: white;
+  color: #1a1a1a;
+  padding: 8px;
+}
+
+/* Additional select styling for better visibility */
+select.form-input:focus {
+  background: white;
+  color: #1a1a1a;
+  opacity: 1;
+}
+
+select.form-input option:checked {
+  background: #667eea;
+  color: white;
+}
+
+select.form-input option:hover {
+  background: #f0f0f0;
+  color: #1a1a1a;
+}
+
 .form-input:focus {
   outline: none;
   border-color: #667eea;
@@ -67,14 +98,18 @@
 
 /* Select Input */
 .form-input[type="select"],
-.form-input[as="select"] {
+.form-input[as="select"],
+select.form-input {
   cursor: pointer;
+  background: white;
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
   background-position: right 12px center;
   background-repeat: no-repeat;
   background-size: 16px;
   padding-right: 40px;
   appearance: none;
+  color: #1a1a1a;
+  opacity: 1;
 }
 
 /* Password Toggle */
