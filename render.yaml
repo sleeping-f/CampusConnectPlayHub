@@ -1,0 +1,61 @@
+services:
+  - type: web
+    name: campusconnect-frontend
+    env: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    region: oregon
+    branch: main
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: REACT_APP_API_URL
+        value: https://campusconnect-backend.onrender.com
+      - key: REACT_APP_GOOGLE_CLIENT_ID
+        sync: false
+
+  - type: web
+    name: campusconnect-backend
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: oregon
+    branch: main
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: DB_HOST
+        fromDatabase:
+          name: campusconnect-db
+          property: host
+      - key: DB_USER
+        fromDatabase:
+          name: campusconnect-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: campusconnect-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: campusconnect-db
+          property: database
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        value: https://campusconnect-frontend.onrender.com
+
+databases:
+  - name: campusconnect-db
+    plan: free
+    region: oregon
